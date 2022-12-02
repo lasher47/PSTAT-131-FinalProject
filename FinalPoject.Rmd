@@ -18,6 +18,7 @@ library(dplyr)
 
 ## Introduction
 
+The goal of this project is to generate a machine learning model that 
 
 
 ```{r cars}
