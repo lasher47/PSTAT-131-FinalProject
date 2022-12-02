@@ -69,7 +69,7 @@ No missing data here because this was all sourced from Riot Games' official API 
 sum(league$blueWins)
 ```
 
-Since there is no missing data in this dataset, we can conclude that the sample 
+Since there is no missing data in this dataset, we can conclude that the sample win rate for blue team is 4930/9879 = 0.499. This is actually lower than blue side win rate for most competitive professional leagues because typically has easier access to neutral objectives(dragons, heralds, and Baron Nashor), first champion pick priority, and a slightly better camera angle.  
 
 ## Including Plots
 
