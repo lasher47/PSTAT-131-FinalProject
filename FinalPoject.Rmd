@@ -55,7 +55,7 @@ league <- read.csv("data/raw/high_diamond_ranked_10min.csv")
 
 
 
-## Exploratory Data Analysis 
+## Pre-Processing and EDA
 
 ```{r missing data}
 sum(is.na(league))
@@ -71,17 +71,14 @@ sum(league$blueWins)
 
 Since there is no missing data in this dataset, we can conclude that the sample winrate for blue team is 4930/9879 = 0.499. This is actually lower than blue side winrate for most competitive professional leagues because blue side has easier access to neutral objectives(dragons, heralds, and Baron Nashor), first champion pick priority, and a slightly better camera angle. Having our sample winrate be almost exactly 50% makes it easier for our metrics to properly evaluate the performance of our model.   
 
-```{r}
+### Cleaning Data
 
+On first glance, we can see that some variables in this dataset are actually redundant because they convey information from both teams implicitly. For example, blueGoldDiff and redGoldDiff both represent the difference in gold at 10 min., but just opposite signs because gold difference is a zero sum statistic. The code chunk below gets rid of redundant variables by either combining them into one variable or retaining only the blue side version.
+
+
+```{r redundant}
+
+league_clean <- league %>%
+  select(-c(redFirstBlood, redExperienceDiff)) #Redundant difference variables
 ```
 
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
