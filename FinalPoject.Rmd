@@ -48,17 +48,28 @@ The data that we will be using for this project is a Kaggle dataset(https://www.
 
 
 ```{r read}
+#Reading in raw csv file
 league <- read.csv("data/raw/high_diamond_ranked_10min.csv")
 
 ```
 
 
 
-### Loading Data
+## Exploratory Data Analysis 
 
-```{r cars}
-x <- 1
+```{r missing data}
+sum(is.na(league))
+
 ```
+
+No missing data here because this was all sourced from Riot Games' official API which only records completed games. 
+
+```{r EDA}
+#Summing up all the times the Blue Team wins over 9879 ranked games
+sum(league$blueWins)
+```
+
+Since there is no missing data in this dataset, we can conclude that the sample 
 
 ## Including Plots
 
