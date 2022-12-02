@@ -1,0 +1,35 @@
+---
+title: "LeagueFinalProject"
+author: "William Long"
+date: "2022-12-02"
+output:
+  html_document:
+    df_print: paged
+    code_folding: hide
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidymodels)
+library(tidyverse)
+library(dplyr)
+```
+
+## Introduction
+
+
+
+```{r cars}
+x <- 1
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
