@@ -1,0 +1,48 @@
+gameid: Unique Riot ID of the game. Can be used with the Riot Games API to lookup more details of the game
+
+blueWins: Binary variable that represents whether Blue team won the game or not. 1 = win, 0 = loss. Also the variable we are trying to predict.
+
+blueWardsPlaced: Number of wards total placed by Blue team by 10 min.
+
+blueWardsDestroyed: Number of wards destroyed by Blue team by 10 min.
+
+blueFirstBlood: Binary variable that represents whether Blue team got the first kill of the game. 1 = first blood, 0 otherwise.
+
+blueKills: Number of kills by Blue team.
+
+blueDeaths: Total number of deaths from Blue team.
+
+blueAssists: Total number of assists from Blue team.
+
+blueEliteMonsters: Number of elite monsters killed by the Blue team. (Sum of blueDragons and blueHeralds with a range of 0-2).
+
+blueDragons: Number of dragons killed by the Blue team. (Range of 0-1)
+
+blueHeralds: Number of heralds killed by the Blue team. (Range of 0-1)
+
+blueTowersDestroyed: Number of enemy towers destroyed by the Blue team. 
+
+blueTotalGold: Blue team total gold.
+
+blueAvgLevel: Average level of all 5 Blue team champions.
+
+blueTotalExperience: Blue team total experience shared by all 5 champions. 
+
+blueTotalMinionsKilled: Total CS(Creep Score) by Blue team. Represents how many minions Blue team has killed by 10 min.
+
+blueTotalJungleMinionsKilled: Total number of jungle minions only killed by Blue team.
+
+blueGoldDiff: Difference in Blue team's total gold - Red team's total gold.
+
+blueExperienceDiff: Difference in Blue team's total experience - Red team's total experience.
+
+blueCSPerMin: Blue team CS/min. blueTotalMinionsKilled/10.
+
+blueGoldPerMin: Blue team's gold generation per minute. blueTotalGold/10.
+
+
+The dataset also contains versions of every variable above but for the Red team instead.
+The only exception to this is blueWins which does not have a Red counterpart, but blueWins tracks the same information because teams cannot draw. 
+
+
+

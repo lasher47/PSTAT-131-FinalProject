@@ -1,5 +1,5 @@
 ---
-title: "LeagueFinalProject"
+title: "Predicting the Winner of a League of Legends game"
 author: "William Long"
 date: "Fall 2022"
 output:
@@ -39,6 +39,8 @@ library(janitor)   #Cleaning data
 library(yardstick)   #Model metrics
 library(ggplot2)   #Graphs and visuals
 library(vip)     #Variable importance
+library(corrr)   #Correlation
+library(arsenal)
 
 set.seed(477)
 
@@ -57,19 +59,41 @@ league <- read.csv("data/raw/high_diamond_ranked_10min.csv")
 
 ## Pre-Processing and EDA
 
-```{r missing data}
+```{r missing}
 sum(is.na(league))
-
 ```
 
 No missing data here because this was all sourced from Riot Games' official API which only records completed games. 
 
-```{r EDA}
+```{r missing}
 #Summing up all the times the Blue Team wins over 9879 ranked games
 sum(league$blueWins)
+
 ```
 
 Since there is no missing data in this dataset, we can conclude that the sample winrate for blue team is 4930/9879 = 0.499. This is actually lower than blue side winrate for most competitive professional leagues because blue side has easier access to neutral objectives(dragons, heralds, and Baron Nashor), first champion pick priority, and a slightly better camera angle. Having our sample winrate be almost exactly 50% makes it easier for our metrics to properly evaluate the performance of our model.   
+
+### Converting some variables into categorical
+
+All of the variables in our raw dataset are numeric by default, but some of them make more sense to represent as factor variables. "blueWins" is an obvious one to change, but some others such as "blueDragons" ,which tracks how many dragons the Blue team has slain, makes more sense to treat as a factor variable because it is only possible to kill at most 1 dragon before 10:00 of game time. 
+
+```{r}
+
+league_clean <- league
+
+#Blue team categorical variables
+league_clean$blueWins <- as.factor(league_clean$blueWins)
+league_clean$blueDragons <- as.factor(league_clean$blueDragons)
+league_clean$blueHeralds <- as.factor(league_clean$blueHeralds)
+league_clean$blueFirstBlood <- as.factor(league_clean$blueFirstBlood)
+
+#Red team categorical variables
+league_clean$redDragons <- as.factor(league_clean$redDragons)
+league_clean$redHeralds <- as.factor(league_clean$redHeralds)
+
+```
+
+
 
 ### Cleaning Data
 
@@ -80,5 +104,45 @@ On first glance, we can see that some variables in this dataset are actually red
 
 league_clean <- league %>%
   select(-c(redFirstBlood, redExperienceDiff)) #Redundant difference variables
+
+cor.test(league$blueKills, league$redDeaths)  
+cor.test(league$blueDeaths, league$redKills)   #These 4 variables are all directly correlated with each other. Makes sense intuitively
+
+
+#We will drop the red variables from above for our model
+league_clean <- league_clean %>%
+  select(-c(redKills, redDeaths))
+
+#Testing correlations between other variables
+cor_league <- league_clean %>%
+  select(blueAssists, blueEliteMonsters, blueGoldDiff, blueWins, blueTotalGold, blueAvgLevel, blueTotalExperience, blueGoldDiff) %>%
+  correlate() %>%
+  stretch() %>%
+  ggplot(aes(x, y, fill = r)) +
+  geom_tile() +
+  geom_text(aes(label = as.character(fashion(r))))
+
+
+league_clean <- league_clean %>%
+  select(-c(redKills, redDeaths))
+  
+```
+
+Creating a few more variables that track the difference in resources between teams.
+
+```{r diff}
+league_clean <- league_clean %>%
+  mutate(blueTotalMinionsDiff = blueTotalMinionsKilled - redTotalMinionsKilled) %>%
+  mutate(blueWardsPlacedDiff = blueWardsPlaced - redWardsPlaced) %>%
+  mutate(blueWardsDestroyedDiff = blueWardsDestroyed - redWardsDestroyed) %>%
+  mutate(blueKillsDiff = blueKills - redKills) %>%
+  mutate()
+
+```
+
+Many variables in the dataset
+
+```{r}
+
 ```
 
