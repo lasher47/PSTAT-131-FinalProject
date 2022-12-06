@@ -21,7 +21,7 @@ The goal of this project is to generate a machine learning model that can predic
 
 ### What is League of Legends?
 
-League of Legends(LoL) is a MOBA(Mobile Online Battle Arena) game created by Riot Games where two teams of 5 champions each versus each other in a tower defense-esque map. The game
+League of Legends(LoL) is a MOBA(Mobile Online Battle Arena) game created by Riot Games where two teams of 5 champions each versus each other in a tower defense-esque map with 3 lanes. The game
 revolves heavily around strategic resource generation and control of those resources to make your team’s champions stronger and more capable of destroying the enemy team’s base. A team wins by destroying the other team's nexus(the core base structure) first. 
 
 ### Why this model might be useful
@@ -32,15 +32,15 @@ In League of Legends, once your team gets stronger from early resources, it beco
 
 ### Loading Packages and Raw Data
 ```{r packages}
+library(dplyr) #Basic R functions
 library(tidymodels)  #Tidymodels and tidyverse for the core modeling framework
 library(tidyverse)
-library(dplyr) #Basic R functions
 library(janitor)   #Cleaning data
 library(yardstick)   #Model metrics
 library(ggplot2)   #Graphs and visuals
 library(vip)     #Variable importance
 library(corrr)   #Correlation
-library(arsenal)
+library(corrplot)
 
 set.seed(477)
 
@@ -123,6 +123,11 @@ league_clean <- league_clean %>%
 
 league_clean <- league_clean %>%
   select(-c(blueTotalMinionsKilled, blueTotalJungleMinionsKilled, redTotalMinionsKilled, redTotalJungleMinionsKilled))
+
+#In a similar vein, a team's total experience is just a way to gauge their average level which is what actually affects a champion's combat strength. As such, we can remove the "TotalExperience" variables from both teams as well. We will keep the "ExperienceDiff" variables however as that still helps to keep track of the relative difference in experience, because each increasing level costs more experience to level up.
+
+league_clean <- league_clean %>%
+  select(-c(blueTotalExperience, redTotalExperience))
   
 ```
 
@@ -130,17 +135,19 @@ league_clean <- league_clean %>%
 
 ```{r corr}
 #Testing correlations between numeric variables
-cor_league <- league_clean %>%
-  select_if(is.numeric) %>%
-  select(-c(gameId)) %>%
-  correlate() %>%
-  stretch() %>%
-  ggplot(aes(x, y, fill = r)) +
-  geom_tile() +
-  geom_text(aes(label = as.character(fashion(r))))
-
-cor_league
+league_clean %>%
+    select(is.numeric) %>% 
+    select(-c(gameId)) %>%  
+    cor() %>% 
+    corrplot(type = 'full', diag = TRUE,  
+           method = 'circle', col = COL2("RdBu"))
 ```
+
+Most of our numeric variables have reasonable and intuitive correlations. For example, blueKills is obviously correlated with blueAssists, but it is even more correlated with blueTotalGold. Kills are worth 300 gold by default, with first blood being worth 400 gold. Securing kills is actually one of the fastest ways to snowball as a champion kill by itself is worth about 15 minion kills. Killing a lane opponent also lets you farm minions without being pressured, gives you an opportunity to obtain even more gold from turret plates, and denies experience to your opponents since they aren't around to soak up minion experience.
+
+The ward and tower related variables have suprisingly low correlation with any other numeric variables. Wards are items you can place in-game that provide vision over a certain area for a fixed amount of time. Normally the game hides most of the map in a fog of war, such that you can only see the immediate area around your champion and your allies. Wards grant your team a limited amount of vision elsewhere which helps to detect flanks or lurking enemies. However just because a ward is placed does not mean that that ward is actually useful. Perhaps it is in an irrelevant spot that no one on the map will frequent. Wards also do not automatically alert you to enemies that they spot, you still have to manually check your mini-map. 
+
+From past experience, I know that is actually rare for a tower to fall by 10:00. There are 3 towers per lane, referred to as T1, T2, and T3 towers respectively. T1 towers are the outermost towers and thus, the first to fall because for each lane, you have to destroy the preceding tower before sieging the next. 
 
 
 
