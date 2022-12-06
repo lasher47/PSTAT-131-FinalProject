@@ -59,20 +59,6 @@ league <- read.csv("data/raw/high_diamond_ranked_10min.csv")
 
 ## Pre-Processing and EDA
 
-```{r missing}
-sum(is.na(league))
-```
-
-No missing data here because this was all sourced from Riot Games' official API which only records completed games. 
-
-```{r missing}
-#Summing up all the times the Blue Team wins over 9879 ranked games
-sum(league$blueWins)
-
-```
-
-Since there is no missing data in this dataset, we can conclude that the sample winrate for blue team is 4930/9879 = 0.499. This is actually lower than blue side winrate for most competitive professional leagues because blue side has easier access to neutral objectives(dragons, heralds, and Baron Nashor), first champion pick priority, and a slightly better camera angle. Having our sample winrate be almost exactly 50% makes it easier for our metrics to properly evaluate the performance of our model.   
-
 ### Converting some variables into categorical
 
 All of the variables in our raw dataset are numeric by default, but some of them make more sense to represent as factor variables. "blueWins" is an obvious one to change, but some others such as "blueDragons" ,which tracks how many dragons the Blue team has slain, makes more sense to treat as a factor variable because it is only possible to kill at most 1 dragon before 10:00 of game time. 
@@ -93,6 +79,21 @@ league_clean$redHeralds <- as.factor(league_clean$redHeralds)
 
 ```
 
+
+```{r missing}
+sum(is.na(league_clean))
+```
+
+No missing data here because this was all sourced from Riot Games' official API which only records completed games. 
+
+```{r response}
+#Summing up all the times the Blue Team wins over 9879 ranked games
+plot(league_clean$blueWins)
+summary(league_clean$blueWins)
+
+```
+
+Since there is no missing data in this dataset, we can conclude that the sample winrate for blue team is 4930/9879 = 0.499. This is actually lower than blue side winrate for most competitive professional leagues because blue side has easier access to neutral objectives(dragons, heralds, and Baron Nashor), first champion pick priority, and a slightly better camera angle. Having our sample winrate be almost exactly 50% makes it easier for our metrics to properly evaluate the performance of our model.   
 
 
 ### Cleaning Data
@@ -147,25 +148,74 @@ Most of our numeric variables have reasonable and intuitive correlations. For ex
 
 The ward and tower related variables have suprisingly low correlation with any other numeric variables. Wards are items you can place in-game that provide vision over a certain area for a fixed amount of time. Normally the game hides most of the map in a fog of war, such that you can only see the immediate area around your champion and your allies. Wards grant your team a limited amount of vision elsewhere which helps to detect flanks or lurking enemies. However just because a ward is placed does not mean that that ward is actually useful. Perhaps it is in an irrelevant spot that no one on the map will frequent. Wards also do not automatically alert you to enemies that they spot, you still have to manually check your mini-map. 
 
-From past experience, I know that is actually rare for a tower to fall by 10:00. There are 3 towers per lane, referred to as T1, T2, and T3 towers respectively. T1 towers are the outermost towers and thus, the first to fall because for each lane, you have to destroy the preceding tower before sieging the next. 
+From past experience, I know that is actually rare for a tower to fall by 10:00. There are 3 towers per lane, referred to as T1, T2, and T3 towers respectively. T1 towers are the outermost towers and thus, the first to fall because for each lane, you have to destroy the preceding tower before sieging the next. Destroying towers, especially in the early game where you can get the full gold value of the tower plates, also grants a significant amount of gold which is why it seems very odd that there's only a minor correlation to a team's gold and gold differential.  One hypothesis that I have is that destroying a tower so early in the game actually makes it easier for the team that lost the tower to safely farm back the deficit. Once a lane has lost their T1 tower, the minions in that lane will naturally push further towards the enemy base and forcing your team's champions to have to overextend to farm the minions in that lane.                                                                                                                                                                                                                                                                                
+### Warding Correlation with Victory
+
+To better explore the properties of the ward variables, we'll first plot some boxplots of them to get a sense of the distribution.
+
+```{r}
+ggplot(league_clean, aes(blueWardsPlaced)) +  
+  geom_boxplot(fill = "#04c5e7")
+
+ggplot(league_clean, aes(redWardsPlaced)) +  
+  geom_boxplot(fill = "#fb0410")
+
+ggplot(league_clean, aes(blueWardsDestroyed)) +
+  geom_boxplot(fill = "#04c5e7")
+
+ggplot(league_clean, aes(redWardsDestroyed)) +  
+  geom_boxplot(fill = "#fb0410")
+
+summary(league_clean$blueWardsPlaced)
+summary(league_clean$redWardsPlaced)
+```
+
+From the boxplots and summaries above, we can see that the mean of wards placed for both teams by 10:00 is about 22 wards, but there are a ton of outlier values. Some games have teams place over 200 wards! That's more than 20 wards/min which far exceeds any reasonable pace for wards. 
+
+
+To determine if warding in the early game is actually correlated at all with winning, we can model a simplified logistic regression recipe and treat the accuracy of that model as our correlation coefficient. 
+
+```{r wards}
+league_clean_split <- initial_split(league_clean, prop = 0.8)
+#No need for stratification because our response variable is already approximately evenly split
+
+league_train <- training(league_clean_split)
+league_test <- testing(league_clean_split)
+
+league_recipe <- recipe(blueWins ~ blueWardsPlaced + blueWardsDestroyed + redWardsPlaced + redWardsDestroyed, data = league_train)
+  
+simple_model <- logistic_reg() %>%
+  set_engine("glm") %>%
+  set_mode("classification")
+
+simple_wf <- workflow() %>%
+  add_model(simple_model) %>%
+  add_recipe(league_recipe)
+
+simple_fit <- fit(simple_wf, league_train)
+
+simple_train_res <- predict(simple_fit, new_data = league_train %>% dplyr::select(-blueWins))
+simple_train_res <- bind_cols(simple_train_res, league_train %>% dplyr::select(blueWins))
+
+accuracy(simple_train_res, truth = blueWins, estimate = .pred_class)
 
 
 
-Creating a few more variables that track the difference in resources between teams.
-
-```{r diff}
-league_clean <- league_clean %>%
-  mutate(blueTotalMinionsDiff = blueTotalMinionsKilled - redTotalMinionsKilled) %>%
-  mutate(blueWardsPlacedDiff = blueWardsPlaced - redWardsPlaced) %>%
-  mutate(blueWardsDestroyedDiff = blueWardsDestroyed - redWardsDestroyed) %>%
-  mutate(blueKillsDiff = blueKills - redKills) %>%
-  mutate()
 
 ```
 
-Many variables in the dataset
+Our accuracy from this simplified model is only 0.54, marginally better than a coin flip. As such, we will be dropping ward variables from our model.
 
-```{r}
+```{r wardDrop}
+league_clean <- league_clean %>%
+  select(-c(redWardsPlaced, redWardsDestroyed, blueWardsPlaced, blueWardsDestroyed))
+```
 
+### Towers Destroyed Correlation with Victory
+
+```{r towers}
+ggplot(fourthdown, aes(season)) + 
+  geom_bar(aes(fill = go_for_it)) +
+  scale_fill_manual(values = c("#000000", "#FB4F14"))
 ```
 
