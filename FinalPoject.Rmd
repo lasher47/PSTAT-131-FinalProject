@@ -97,36 +97,52 @@ league_clean$redHeralds <- as.factor(league_clean$redHeralds)
 
 ### Cleaning Data
 
-On first glance, we can see that some variables in this dataset are actually redundant because they convey information from both teams implicitly. For example, blueGoldDiff and redGoldDiff both represent the difference in gold at 10 min., but just opposite signs because gold difference is a zero sum statistic. The code chunk below gets rid of redundant variables by either combining them into one variable or retaining only the blue side version.
+On first glance, we can see that some variables in this dataset are actually redundant because they convey information from both teams implicitly. For example, blueGoldDiff and redGoldDiff both represent the difference in gold at 10 min., but just opposite signs because gold difference is a zero sum statistic. The code chunk below gets rid of redundant variables by either combining them into one variable or retaining only the blue side version. We will also eliminate variables that have 100% correlation with another variable as those variables will not provide any extra information for our model. 
 
 
 ```{r redundant}
 
-league_clean <- league %>%
-  select(-c(redFirstBlood, redExperienceDiff)) #Redundant difference variables
-
-cor.test(league$blueKills, league$redDeaths)  
-cor.test(league$blueDeaths, league$redKills)   #These 4 variables are all directly correlated with each other. Makes sense intuitively
-
-
-#We will drop the red variables from above for our model
 league_clean <- league_clean %>%
-  select(-c(redKills, redDeaths))
+  select(-c(redFirstBlood, redExperienceDiff, redGoldDiff)) #Redundant difference variables
 
-#Testing correlations between other variables
+league_clean <- league_clean %>%
+  select(-c(blueEliteMonsters, redEliteMonsters))
+# Both "EliteMonsters" variables are also just the sum of heralds and dragons and can be dropped
+
+league_clean <- league_clean %>%
+  select(-c(blueCSPerMin, redCSPerMin, blueGoldPerMin, redGoldPerMin))
+#Dropping the "PerMin" variables as those are just derived from the variables that represent the total/10 minutes. 
+
+cor.test(league_clean$blueKills, league_clean$redDeaths)  
+cor.test(league_clean$blueDeaths, league_clean$redKills)   #These 4 variables are all directly correlated with each other. Makes sense intuitively because a kill for one team would equal a death for the other team. We will drop the red ones below.
+
+league_clean <- league_clean %>%
+  select(-c(redDeaths, redKills))
+
+#From my previous knowledge of the game, I know that total minion kills and jungle minion kills are really just resources to farm for gold and experience. As such, their impact on the game is already reflected in those other stats.
+
+league_clean <- league_clean %>%
+  select(-c(blueTotalMinionsKilled, blueTotalJungleMinionsKilled, redTotalMinionsKilled, redTotalJungleMinionsKilled))
+  
+```
+
+### Correlations between variables
+
+```{r corr}
+#Testing correlations between numeric variables
 cor_league <- league_clean %>%
-  select(blueAssists, blueEliteMonsters, blueGoldDiff, blueWins, blueTotalGold, blueAvgLevel, blueTotalExperience, blueGoldDiff) %>%
+  select_if(is.numeric) %>%
+  select(-c(gameId)) %>%
   correlate() %>%
   stretch() %>%
   ggplot(aes(x, y, fill = r)) +
   geom_tile() +
   geom_text(aes(label = as.character(fashion(r))))
 
-
-league_clean <- league_clean %>%
-  select(-c(redKills, redDeaths))
-  
+cor_league
 ```
+
+
 
 Creating a few more variables that track the difference in resources between teams.
 
