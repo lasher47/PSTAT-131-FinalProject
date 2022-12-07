@@ -238,10 +238,10 @@ dim(league_test)
 
 After our split, we have 7903 observations in our training data and 1976 observations in our testing data.
 
-We will also use K-fold cross validation to improve our model's performance 
+We will also use K-fold cross validation to improve our model's performance with unseen data.  
 
 ```{r}
-
+league_folds <- vfold_cv(league_train, v=10)
 ```
 
 
