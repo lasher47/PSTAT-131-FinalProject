@@ -148,29 +148,11 @@ Most of our numeric variables have reasonable and intuitive correlations. For ex
 
 The ward and tower related variables have suprisingly low correlation with any other numeric variables. Wards are items you can place in-game that provide vision over a certain area for a fixed amount of time. Normally the game hides most of the map in a fog of war, such that you can only see the immediate area around your champion and your allies. Wards grant your team a limited amount of vision elsewhere which helps to detect flanks or lurking enemies. However just because a ward is placed does not mean that that ward is actually useful. Perhaps it is in an irrelevant spot that no one on the map will frequent. Wards also do not automatically alert you to enemies that they spot, you still have to manually check your mini-map. 
 
-From past experience, I know that is actually rare for a tower to fall by 10:00. There are 3 towers per lane, referred to as T1, T2, and T3 towers respectively. T1 towers are the outermost towers and thus, the first to fall because for each lane, you have to destroy the preceding tower before sieging the next. Destroying towers, especially in the early game where you can get the full gold value of the tower plates, also grants a significant amount of gold which is why it seems very odd that there's only a minor correlation to a team's gold and gold differential.  One hypothesis that I have is that destroying a tower so early in the game actually makes it easier for the team that lost the tower to safely farm back the deficit. Once a lane has lost their T1 tower, the minions in that lane will naturally push further towards the enemy base and forcing your team's champions to have to overextend to farm the minions in that lane.                                                                                                                                                                                                                                                                                
+![Ward giving vision of a bush over the wall](images/wardOverWall.jpg)
+
+From past experience, I know that is actually rare for a tower to fall by 10:00. There are 3 towers per lane, referred to as T1, T2, and T3 towers respectively. T1 towers are the outermost towers and thus, the first to fall because for each lane, you have to destroy the preceding tower before sieging the next. Destroying towers, especially in the early game where you can get the full gold value of the tower plates, also grants a significant amount of gold which is why it seems very odd that there's only a minor correlation to a team's gold and gold differential. One hypothesis that I have is that destroying a tower so early in the game actually makes it easier for the team that lost the tower to safely farm back the deficit. Once a lane has lost their T1 tower, the minions in that lane will naturally push further towards the enemy base and forcing your team's champions to have to overextend to farm the minions in that lane. In this case, destroying an enemy tower gives your team an immediate economic reward, but puts your team at a positional disadvantage.                                                                                                      
+
 ### Warding Correlation with Victory
-
-To better explore the properties of the ward variables, we'll first plot some boxplots of them to get a sense of the distribution.
-
-```{r}
-ggplot(league_clean, aes(blueWardsPlaced)) +  
-  geom_boxplot(fill = "#04c5e7")
-
-ggplot(league_clean, aes(redWardsPlaced)) +  
-  geom_boxplot(fill = "#fb0410")
-
-ggplot(league_clean, aes(blueWardsDestroyed)) +
-  geom_boxplot(fill = "#04c5e7")
-
-ggplot(league_clean, aes(redWardsDestroyed)) +  
-  geom_boxplot(fill = "#fb0410")
-
-summary(league_clean$blueWardsPlaced)
-summary(league_clean$redWardsPlaced)
-```
-
-From the boxplots and summaries above, we can see that the mean of wards placed for both teams by 10:00 is about 22 wards, but there are a ton of outlier values. Some games have teams place over 200 wards! That's more than 20 wards/min which far exceeds any reasonable pace for wards. 
 
 
 To determine if warding in the early game is actually correlated at all with winning, we can model a simplified logistic regression recipe and treat the accuracy of that model as our correlation coefficient. 
@@ -204,7 +186,26 @@ accuracy(simple_train_res, truth = blueWins, estimate = .pred_class)
 
 ```
 
-Our accuracy from this simplified model is only 0.54, marginally better than a coin flip. As such, we will be dropping ward variables from our model.
+Our accuracy from this simplified model is only 0.55, marginally better than a coin flip. To better explore the properties of the ward variables, let's plot some boxplots of them to get a sense of the distribution.
+
+```{r}
+ggplot(league_clean, aes(blueWardsPlaced)) +  
+  geom_boxplot(fill = "#04c5e7")
+
+ggplot(league_clean, aes(redWardsPlaced)) +  
+  geom_boxplot(fill = "#fb0410")
+
+ggplot(league_clean, aes(blueWardsDestroyed)) +
+  geom_boxplot(fill = "#04c5e7")      #
+
+ggplot(league_clean, aes(redWardsDestroyed)) +  
+  geom_boxplot(fill = "#fb0410")
+
+summary(league_clean$blueWardsPlaced)
+summary(league_clean$redWardsPlaced)
+```
+
+From the boxplots and summaries above, we can see that the mean of wards placed for both teams by 10:00 is about 22 wards, but there are a ton of outlier values. Some games have teams place over 200 wards! That's more than 20 wards/min which far exceeds any reasonable pace for wards. In League of Legends, there are two types of wards: free, temporary wards that go on cooldown for about 120 seconds every time you place them and control wards which are permanent wards that cost 75 gold to buy. You can always place a control ward as long as you have one bought in your inventory, but you can only have 1 control ward per champion on the map at the same time. Since the frequency of free wards are gated by cooldown, the only way to achieve these extreme outlier values mentioned above is to buy an absurd amount of control wards. Way more than any normal gameplay would require and likely an excessive drain on gold, which may help to explain why ward placement doesn't seem to correlate well with winning. More strategic ward placement may still correlate with winning but the variables in this data set only give the raw quantity of wards and do not distinguish between the quality of the wards. As such, we will be dropping the ward variables from our model as well.
 
 ```{r wardDrop}
 league_clean <- league_clean %>%

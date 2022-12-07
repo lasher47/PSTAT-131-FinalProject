@@ -6,13 +6,13 @@ blueWardsPlaced: Number of wards total placed by Blue team by 10 min.
 
 blueWardsDestroyed: Number of wards destroyed by Blue team by 10 min.
 
-blueFirstBlood: Binary variable that represents whether Blue team got the first kill of the game. 1 = first blood, 0 otherwise.
+blueFirstBlood: Binary variable that represents whether Blue team got the first kill of the game. 1 = first blood, 0 otherwise. First blood kill is worth 100 gold more than normal.
 
-blueKills: Number of kills by Blue team.
+blueKills: Number of kills by Blue team. Grants gold and experience for Blue team.
 
-blueDeaths: Total number of deaths from Blue team.
+blueDeaths: Total number of deaths from Blue team. A death takes the dead champion off the map for a certain amount of time. 
 
-blueAssists: Total number of assists from Blue team.
+blueAssists: Total number of assists from Blue team. Assists also grant gold and experience.
 
 blueEliteMonsters: Number of elite monsters killed by the Blue team. (Sum of blueDragons and blueHeralds with a range of 0-2).
 
@@ -28,7 +28,7 @@ blueAvgLevel: Average level of all 5 Blue team champions.
 
 blueTotalExperience: Blue team total experience shared by all 5 champions. 
 
-blueTotalMinionsKilled: Total CS(Creep Score) by Blue team. Represents how many minions Blue team has killed by 10 min.
+blueTotalMinionsKilled: Total CS(Creep Score) by Blue team. Represents how many minions Blue team has killed by 10 min. Killing minions grants gold and experience.
 
 blueTotalJungleMinionsKilled: Total number of jungle minions only killed by Blue team.
 
