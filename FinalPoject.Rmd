@@ -31,7 +31,7 @@ In League of Legends, once your team gets stronger from early resources, it beco
 
 
 ### Loading Packages and Raw Data
-```{r packages}
+```{r packages, warning = FALSE}
 library(dplyr) #Basic R functions
 library(tidymodels)  #Tidymodels and tidyverse for the core modeling framework
 library(tidyverse)
@@ -243,9 +243,15 @@ We will also use K-fold cross validation to improve our model's performance with
 league_folds <- vfold_cv(league_train, v=10)
 ```
 
+## Model building
+
+Now we're ready to start building our full models to try to predict whether Blue team or Red Team wins.
+
+We'll start by setting up a recipe and workflow below.
 
 ```{r recipe}
-
+Overriding previous recipe from simple model
+league_recipe <- recipe(blueWins ~ )
 ```
 
 
