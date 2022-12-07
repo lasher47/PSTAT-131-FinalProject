@@ -42,7 +42,7 @@ library(vip)     #Variable importance
 library(corrr)   #Correlation
 library(corrplot)
 
-set.seed(477)
+
 
 ```
 
@@ -158,6 +158,7 @@ From past experience, I know that is actually rare for a tower to fall by 10:00.
 To determine if warding in the early game is actually correlated at all with winning, we can model a simplified logistic regression recipe and treat the accuracy of that model as our correlation coefficient. 
 
 ```{r wards}
+set.seed(477)
 league_clean_split <- initial_split(league_clean, prop = 0.8)
 #No need for stratification because our response variable is already approximately evenly split
 
@@ -212,11 +213,37 @@ league_clean <- league_clean %>%
   select(-c(redWardsPlaced, redWardsDestroyed, blueWardsPlaced, blueWardsDestroyed))
 ```
 
-### Towers Destroyed Correlation with Victory
-
-```{r towers}
-ggplot(fourthdown, aes(season)) + 
-  geom_bar(aes(fill = go_for_it)) +
-  scale_fill_manual(values = c("#000000", "#FB4F14"))
+```{r, eval=FALSE}
+#Saving our cleaned dataset to data/processed
+write.csv(league_clean, "data/processed/league_clean.csv")
 ```
+
+## Data Splitting and Cross-validation
+
+We will start splitting our data into training and testing splits, with an initial split of 80/20 training/testing. We also do not need to stratify our data because our dataset actually has a very balanced outcome variable distribution. 
+
+```{r split}
+#Overriding previous variables from the simple model for wards from above.
+
+set.seed(526)
+league_clean_split <- initial_split(league_clean, prop = 0.8)
+
+league_train <- training(league_clean_split)
+league_test <- testing(league_clean_split)
+
+dim(league_train)
+dim(league_test)
+
+```
+
+After our split, we have 7903 observations in our training data and 1976 observations in our testing data.
+
+We will also use K-fold cross validation to improve our model's performance 
+
+```{r}
+
+```
+
+
+
 
