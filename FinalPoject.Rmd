@@ -155,12 +155,11 @@ From past experience, I know that is actually rare for a tower to fall by 10:00.
 ### Warding Correlation with Victory
 
 
-To determine if warding in the early game is actually correlated at all with winning, we can model a simplified logistic regression recipe and treat the accuracy of that model as our correlation coefficient. 
+To determine if warding in the early game is actually correlated at all with winning, we can model a simplified logistic regression recipe and gauge the accuracy of that model.
 
 ```{r wards}
 set.seed(477)
-league_clean_split <- initial_split(league_clean, prop = 0.8)
-#No need for stratification because our response variable is already approximately evenly split
+league_clean_split <- initial_split(league_clean, prop = 0.8, strata = blueWins)
 
 league_train <- training(league_clean_split)
 league_test <- testing(league_clean_split)
@@ -187,7 +186,7 @@ accuracy(simple_train_res, truth = blueWins, estimate = .pred_class)
 
 ```
 
-Our accuracy from this simplified model is only 0.55, marginally better than a coin flip. To better explore the properties of the ward variables, let's plot some boxplots of them to get a sense of the distribution.
+Our accuracy from this simplified model is only about 0.54, marginally better than a coin flip. To better explore the properties of the ward variables, let's plot some boxplots of them to get a sense of the distribution.
 
 ```{r}
 ggplot(league_clean, aes(blueWardsPlaced)) +  
@@ -220,13 +219,13 @@ write.csv(league_clean, "data/processed/league_clean.csv")
 
 ## Data Splitting and Cross-validation
 
-We will start splitting our data into training and testing splits, with an initial split of 80/20 training/testing. We also do not need to stratify our data because our dataset actually has a very balanced outcome variable distribution. 
+We will start splitting our data into training and testing splits, with an initial split of 80/20 training/testing and stratified on our outcome variable.
 
 ```{r split}
 #Overriding previous variables from the simple model for wards from above.
 
 set.seed(526)
-league_clean_split <- initial_split(league_clean, prop = 0.8)
+league_clean_split <- initial_split(league_clean, prop = 0.8, strata = blueWins)
 
 league_train <- training(league_clean_split)
 league_test <- testing(league_clean_split)
@@ -244,6 +243,10 @@ We will also use K-fold cross validation to improve our model's performance with
 league_folds <- vfold_cv(league_train, v=10)
 ```
 
+
+```{r recipe}
+
+```
 
 
 
