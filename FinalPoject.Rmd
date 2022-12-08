@@ -17,16 +17,16 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Introduction
 
-The goal of this project is to generate a machine learning model that can predict the eventual winner of a ranked game of League of Legends using data from the first 10 minutes of that game.
+The goal of this project is to generate a machine learning model that can predict the eventual winner of a ranked game of League of Legends using numeric data from resources and objectives taken from the first 10 minutes of that game.
 
 ### What is League of Legends?
 
 League of Legends(LoL) is a MOBA(Mobile Online Battle Arena) game created by Riot Games where two teams of 5 champions each versus each other in a tower defense-esque map with 3 lanes. The game
-revolves heavily around strategic resource generation and control of those resources to make your team’s champions stronger and more capable of destroying the enemy team’s base. A team wins by destroying the other team's nexus(the core base structure) first. 
+revolves heavily around strategic resource generation and control of those resources to make your team’s champions stronger and more capable of destroying the enemy team’s base. A team wins by destroying the other team's nexus(the core base structure) first.
 
 ### Why this model might be useful
 
-In League of Legends, once your team gets stronger from early resources, it becomes even easier for your team to fight for more resources. As such, early game advantages often snowball exponentially into an eventual victory for the leading team. This model will attempt to predict the eventual winner of a game given this early game data. Hopefully this will give other players insight as to when its statistically worth it to surrender after a bad early game and on what resources to prioritize in the early game.
+In League of Legends, once your team gets stronger from early resource advantages, it becomes even easier for your team to fight for more resources. As such, early game advantages often snowball exponentially into an eventual victory for the leading team. This model will attempt to predict the eventual winner of a game given this early game data. Hopefully this will give other players insight as to when its statistically worth it to surrender after a bad early game and on what resources to prioritize in the early game. 
 
 
 
@@ -148,7 +148,11 @@ Most of our numeric variables have reasonable and intuitive correlations. For ex
 
 The ward and tower related variables have suprisingly low correlation with any other numeric variables. Wards are items you can place in-game that provide vision over a certain area for a fixed amount of time. Normally the game hides most of the map in a fog of war, such that you can only see the immediate area around your champion and your allies. Wards grant your team a limited amount of vision elsewhere which helps to detect flanks or lurking enemies. However just because a ward is placed does not mean that that ward is actually useful. Perhaps it is in an irrelevant spot that no one on the map will frequent. Wards also do not automatically alert you to enemies that they spot, you still have to manually check your mini-map. 
 
+
+
 ![Ward giving vision of a bush over the wall](images/wardOverWall.jpg)
+
+
 
 From past experience, I know that is actually rare for a tower to fall by 10:00. There are 3 towers per lane, referred to as T1, T2, and T3 towers respectively. T1 towers are the outermost towers and thus, the first to fall because for each lane, you have to destroy the preceding tower before sieging the next. Destroying towers, especially in the early game where you can get the full gold value of the tower plates, also grants a significant amount of gold which is why it seems very odd that there's only a minor correlation to a team's gold and gold differential. One hypothesis that I have is that destroying a tower so early in the game actually makes it easier for the team that lost the tower to safely farm back the deficit. Once a lane has lost their T1 tower, the minions in that lane will naturally push further towards the enemy base and forcing your team's champions to have to overextend to farm the minions in that lane. In this case, destroying an enemy tower gives your team an immediate economic reward, but puts your team at a positional disadvantage.                                                                                                      
 
@@ -212,10 +216,15 @@ league_clean <- league_clean %>%
   select(-c(redWardsPlaced, redWardsDestroyed, blueWardsPlaced, blueWardsDestroyed))
 ```
 
+
+
+
 ```{r, eval=FALSE}
 #Saving our cleaned dataset to data/processed
 write.csv(league_clean, "data/processed/league_clean.csv")
 ```
+
+
 
 ## Data Splitting and Cross-validation
 
@@ -237,22 +246,65 @@ dim(league_test)
 
 After our split, we have 7903 observations in our training data and 1976 observations in our testing data.
 
-We will also use K-fold cross validation to improve our model's performance with unseen data.  
+We will also use K-fold cross validation to improve our model's performance with unseen data.
 
 ```{r}
-league_folds <- vfold_cv(league_train, v=10)
+league_folds <- vfold_cv(league_train, v=5,strata = blueWins, repeats = 5) #5 fold CV with 5 repeats. 
 ```
 
 ## Model building
 
 Now we're ready to start building our full models to try to predict whether Blue team or Red Team wins.
 
-We'll start by setting up a recipe and workflow below.
+
+### Building the Recipe
+
+
+We'll start by setting up an initial recipe and workflow below. We'll use every predictor left in our cleaned dataset as predictors with the exception of **gameID** and **blueWins**. Interactions terms are also included.
+
 
 ```{r recipe}
-Overriding previous recipe from simple model
-league_recipe <- recipe(blueWins ~ )
+#Overriding previous recipe from simple model
+
+league_recipe <- recipe(blueWins ~ blueFirstBlood + blueKills + blueDeaths + blueAssists + blueDragons + blueHeralds + blueTowersDestroyed + blueTotalGold + blueAvgLevel  + blueExperienceDiff + redAssists + redDragons + redHeralds + redTowersDestroyed + redTotalGold + redAvgLevel, data = league_train) %>%
+  step_dummy(all_nominal_predictors()) %>% 
+  step_interact(terms = ~ blueKills:blueAssists + blueDeaths:redAssists) %>%
+  step_center(all_predictors()) %>%
+  step_scale(all_predictors())
+  
 ```
+
+
+### Logistic Regression 
+
+Logistic Regression done below with tuning parameters evaluated over our folds. 
+
+```{r}
+log_model <- logistic_reg(mode = "classification", engine = "glmnet", penalty = tune(), mixture = tune())
+
+log_wkflow <- workflow() %>%
+  add_recipe(league_recipe) %>%
+  add_model(log_model)
+
+log_grid <- grid_regular(penalty(range = c(-5,5)), mixture(range = c(0,1)), levels = 5)
+
+log_results <- tune_grid(log_wkflow, resamples = league_folds, grid =  log_grid)
+
+autoplot(log_results)
+
+log_results
+  
+```
+
+```{r}
+save(log_results, file = "results/log_results.rda")
+```
+
+```{r}
+load(file = "results/log_results.rda")
+```
+
+### Random Forest model 
 
 
 
