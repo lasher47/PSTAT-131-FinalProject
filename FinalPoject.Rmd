@@ -41,6 +41,7 @@ library(ggplot2)   #Graphs and visuals
 library(vip)     #Variable importance
 library(corrr)   #Correlation
 library(corrplot)
+library(ranger)
 
 
 
@@ -306,5 +307,22 @@ load(file = "results/log_results.rda")
 
 ### Random Forest model 
 
+```{r rf}
+rf_model <- rand_forest() %>%
+  set_engine("ranger") %>% 
+  set_mode("classification")
+
+rf_wf <- workflow() %>%
+  add_model(rf_model %>% set_args(mtry = tune(), trees = tune(), min_n = tune())) %>%
+  add_recipe(league_recipe)
+
+rf_param_grid <- grid_regular(mtry(range=c(1,15)), trees(range=c(64,128)), min_n(range = c(50, 500)), levels = 3)
+tune_res_rf <- tune_grid(
+  rf_wf, 
+  resamples = league_folds, 
+  grid = rf_param_grid, 
+  metrics = metric_set(accuracy, roc_auc)
+)
+```
 
 
