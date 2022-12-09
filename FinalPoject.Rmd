@@ -279,7 +279,7 @@ league_recipe <- recipe(blueWins ~ blueFirstBlood + blueKills + blueDeaths + blu
 
 ### Logistic Regression
 
-Logistic Regression done below with tuning parameters  evaluated over our folds. We will 
+Logistic Regression done below with tuning parameters  evaluated over our folds.
 
 ```{r, eval = FALSE}
 log_model <- logistic_reg(mode = "classification", engine = "glmnet", penalty = tune(), mixture = tune())
@@ -291,11 +291,9 @@ log_wkflow <- workflow() %>%
 log_grid <- grid_regular(penalty(range = c(-5,5)), mixture(range = c(0,1)), levels = 10)
 
 log_results <- tune_grid(log_wkflow, resamples = league_folds, grid =  log_grid)
-
-autoplot(log_results)
-
   
 ```
+Our accuracy for this type of model seems to peak around 70% and our `roc_auc` seems to peak around 0.8
 
 ```{r, eval = FALSE}
 #Saving our results so we don't have to run the model again
@@ -304,10 +302,37 @@ save(log_results, file = "results/log_results.rda")
 
 ```{r}
 load(file = "results/log_results.rda")
+autoplot(log_results)
 ```
+
+
 
 ### Decision Tree
 
+```{r, eval = FALSE}
+class_tree_model <- decision_tree() %>%
+  set_engine("rpart") %>%
+  set_mode("classification")
+  
+class_tree_wf <- workflow() %>%
+  add_model(class_tree_model %>% set_args(cost_complexity = tune())) %>%
+  add_recipe(league_recipe)
+
+class_tree_grid <- grid_regular(cost_complexity(range = c(-3, -1)), levels = 10)
+
+class_tree_res <- tune_grid(
+  class_tree_wf, 
+  resamples = league_folds, 
+  grid = class_tree_grid, 
+  metrics = metric_set(roc_auc, accuracy)
+)
+autoplot(class_tree_res)
+```
+Accuracy peaks around the same value as logistic regression, but `roc_auc` has slightly decreased.
+
+```{r, eval = FALSE}
+save(class_tree_res, file = "results/class_tree_results.rda")
+```
 
 
 ### Random Forest model
