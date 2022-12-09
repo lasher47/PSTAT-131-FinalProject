@@ -28,7 +28,7 @@ In League of Legends, once your team gets stronger from early resource advantage
 
 ### Loading Packages and Raw Data
 
-```{r packages, warning = FALSE}
+```{r packages, warning = FALSE, echo = FALSE}
 library(dplyr) #Basic R functions
 library(tidymodels)  #Tidymodels and tidyverse for the core modeling framework
 library(tidyverse)
@@ -56,7 +56,7 @@ league <- read.csv("data/raw/high_diamond_ranked_10min.csv")
 
 ### Converting some variables into categorical
 
-All of the variables in our raw dataset are numeric by default, but some of them make more sense to represent as factor variables. "blueWins" is an obvious one to change, but some others such as "blueDragons" ,which tracks how many dragons the Blue team has slain, makes more sense to treat as a factor variable because it is only possible to kill at most 1 dragon before 10:00 of game time.
+All of the variables in our raw dataset are numeric by default, but some of them make more sense to represent as factor variables. `blueWins` is an obvious one to change, but some others such as `blueDragons` ,which tracks how many dragons the Blue team has slain, makes more sense to treat as a factor variable because it is only possible to kill at most 1 dragon before 10:00 of game time.
 
 ```{r}
 
@@ -74,11 +74,14 @@ league_clean$redHeralds <- as.factor(league_clean$redHeralds)
 
 ```
 
+We will also check for any missing data in our dataset. 
+
+
 ```{r missing}
 sum(is.na(league_clean))
 ```
 
-No missing data here because this was all sourced from Riot Games' official API which only records completed games.
+As expected, there is no missing data here because this was all sourced from Riot Games' official API which only records completed games.
 
 ```{r response}
 #Summing up all the times the Blue Team wins over 9879 ranked games
@@ -91,12 +94,12 @@ Since there is no missing data in this dataset, we can conclude that the sample 
 
 ### Cleaning Data
 
-On first glance, we can see that some variables in this dataset are actually redundant because they convey information from both teams implicitly. For example, blueGoldDiff and redGoldDiff both represent the difference in gold at 10 min., but just opposite signs because gold difference is a zero sum statistic. The code chunk below gets rid of redundant variables by either combining them into one variable or retaining only the blue side version. We will also eliminate variables that have 100% correlation with another variable as those variables will not provide any extra information for our model.
+On first glance, we can see that some variables in this dataset are actually not useful for a machine learning model because they are derived purely from information from other variables. For example, `blueGoldDiff` represents `blueTotalGold` - `redTotalGold`  at 10 min, but this variable doesn't provide our model with any extra information. In a similar vein, there are also redundant variables for Red team that represent information that is already conveyed by a similar Blue team variable. `redFirstBlood` is a binary variable that represents whether or not the Red team secured the first champion kill of the game, but `blueFirstBlood` represents the same information because only one team can get the first champion kill. The code chunk below drops excess variables that are already 100% correlated with other variables.
 
-```{r redundant}
+```{r excess}
 
 league_clean <- league_clean %>%
-  select(-c(redFirstBlood, redExperienceDiff, blueExperienceDiff, redGoldDiff, blueGoldDiff)) #Redundant difference variables
+  select(-c(redFirstBlood, redExperienceDiff, blueExperienceDiff, redGoldDiff, blueGoldDiff)) #Redundant difference variables and redFirstBlood
 
 league_clean <- league_clean %>%
   select(-c(blueEliteMonsters, redEliteMonsters))
@@ -117,7 +120,7 @@ league_clean <- league_clean %>%
 league_clean <- league_clean %>%
   select(-c(blueTotalMinionsKilled, blueTotalJungleMinionsKilled, redTotalMinionsKilled, redTotalJungleMinionsKilled))
 
-#In a similar vein, a team's total experience is just a way to gauge their average level which is what actually affects a champion's combat strength. As such, we can remove the "TotalExperience" variables from both teams as well. We will keep the "ExperienceDiff" variables however as that still helps to keep track of the relative difference in experience, because each increasing level costs more experience to level up.
+#In a similar vein, a team's total experience is just a way to gauge their average level which is what actually affects a champion's combat strength. As such, we can remove the "TotalExperience" variables from both teams as well. 
 
 league_clean <- league_clean %>%
   select(-c(blueTotalExperience, redTotalExperience))
@@ -136,13 +139,29 @@ league_clean %>%
            method = 'circle', col = COL2("RdBu"))
 ```
 
-Most of our numeric variables have reasonable and intuitive correlations. For example, blueKills is obviously correlated with blueAssists, but it is even more correlated with blueTotalGold. Kills are worth 300 gold by default, with first blood being worth 400 gold. Securing kills is actually one of the fastest ways to snowball as a champion kill by itself is worth about 15 minion kills. Killing a lane opponent also lets you farm minions without being pressured, gives you an opportunity to obtain even more gold from turret plates, and denies experience to your opponents since they aren't around to soak up minion experience.
+Most of our numeric variables have reasonable and intuitive correlations. For example, `blueKills` is obviously correlated with `blueAssists`, but it is even more correlated with `blueTotalGold`. Kills are worth 300 gold by default, with first blood being worth 400 gold. Securing kills is actually one of the fastest ways to snowball as a champion kill by itself is worth about 15 minion kills. Killing a lane opponent also lets you farm minions without being pressured, gives you an opportunity to obtain even more gold from turret plates, and denies experience to your opponents since they aren't around to soak up minion experience.
 
 The ward and tower related variables have suprisingly low correlation with any other numeric variables. Wards are items you can place in-game that provide vision over a certain area for a fixed amount of time. Normally the game hides most of the map in a fog of war, such that you can only see the immediate area around your champion and your allies. Wards grant your team a limited amount of vision elsewhere which helps to detect flanks or lurking enemies. However just because a ward is placed does not mean that that ward is actually useful. Perhaps it is in an irrelevant spot that no one on the map will frequent. Wards also do not automatically alert you to enemies that they spot, you still have to manually check your mini-map.
+
+
 
 ![Ward giving vision of a bush over the wall](images/wardOverWall.jpg)
 
 From past experience, I know that is actually rare for a tower to fall by 10:00. There are 3 towers per lane, referred to as T1, T2, and T3 towers respectively. T1 towers are the outermost towers and thus, the first to fall because for each lane, you have to destroy the preceding tower before sieging the next. Destroying towers, especially in the early game where you can get the full gold value of the tower plates, also grants a significant amount of gold which is why it seems very odd that there's only a minor correlation to a team's gold and gold differential. One hypothesis that I have is that destroying a tower so early in the game actually makes it easier for the team that lost the tower to safely farm back the deficit. Once a lane has lost their T1 tower, the minions in that lane will naturally push further towards the enemy base and forcing your team's champions to have to overextend to farm the minions in that lane. In this case, destroying an enemy tower gives your team an immediate economic reward, but puts your team at a positional disadvantage.
+
+
+I also want to see if there's any correlation between towers destroyed and heralds slain by each team. A rift herald is a neutral objective in League of Legends that can be slain by either team. Once slain, the team that killed the herald can re-summon it again to cause it ram into an enemy tower, dealing a large amount of damage to the tower. This makes it much easier for a team with a herald to siege towers and I hypothesize that teams that have slain a rift herald before 10 min will have destroyed more towers on average. Below are summary statistics for `blueTowersDestroyed` and `redTowersDestroyed` grouped by `blueHeralds` and `redHeralds` respectively. 
+
+```{r}
+tapply(league_clean$blueTowersDestroyed, league_clean$blueHeralds, summary)
+
+tapply(league_clean$redTowersDestroyed, league_clean$redHeralds, summary)
+
+#Herald variables range from 0-1
+
+```
+
+My hypothesis seems to be correct on this. A team with a herald destroys 0.16 towers by 10 minutes on average, compared to a team without a herald which only destroys 0.02 towers by 10 minutes on average.
 
 ### Warding Correlation with Victory
 
@@ -195,12 +214,6 @@ ggplot(league_clean, aes(redWardsDestroyed)) +
 summary(league_clean$blueWardsPlaced)
 summary(league_clean$redWardsPlaced)
 
-ggplot(league_clean, aes(x=blueHeralds, y=blueTowersDestroyed)) +  geom_bar(fill='blue')
-
-x <- league_clean %>%
-  group_by(league_clean$blueHeralds) %>%
-  summary(league_clean$blueTowersDestroyed)
-
 ```
 
 From the boxplots and summaries above, we can see that the mean of wards placed for both teams by 10:00 is about 22 wards, but there are a ton of outlier values. Some games have teams place over 200 wards! That's more than 20 wards/min which far exceeds any reasonable pace for wards. In League of Legends, there are two types of wards: free, temporary wards that go on cooldown for about 120 seconds every time you place them and control wards which are permanent wards that cost 75 gold to buy. You can always place a control ward as long as you have one bought in your inventory, but you can only have 1 control ward per champion on the map at the same time. Since the frequency of free wards are gated by cooldown, the only way to achieve these extreme outlier values mentioned above is to buy an absurd amount of control wards. Way more than any normal gameplay would require and likely an excessive drain on gold, which may help to explain why ward placement doesn't seem to correlate well with winning. More strategic ward placement may still correlate with winning but the variables in this data set only give the raw quantity of wards and do not distinguish between the quality of the wards. As such, we will be dropping the ward variables from our model as well.
@@ -247,24 +260,28 @@ Now we're ready to start building our full models to try to predict whether Blue
 
 ### Building the Recipe
 
-We'll start by setting up an initial recipe and workflow below. We'll use every predictor left in our cleaned dataset as predictors with the exception of **gameID** and **blueWins**. Interactions terms are also included.
+We'll start by setting up an initial recipe and workflow below. We'll use every predictor left in our cleaned dataset as predictors with the exception of **gameID** and **blueWins**. Interactions terms are also included with reasoning supported from our EDA. 
 
 ```{r recipe}
 #Overriding previous recipe from simple model
 
 league_recipe <- recipe(blueWins ~ blueFirstBlood + blueKills + blueDeaths + blueAssists + blueDragons + blueHeralds + blueTowersDestroyed + blueTotalGold + blueAvgLevel + redAssists + redDragons + redHeralds + redTowersDestroyed + redTotalGold + redAvgLevel, data = league_train) %>%
   step_dummy(all_nominal_predictors()) %>% 
-  step_interact(terms = ~ blueKills:blueAssists + blueDeaths:redAssists) %>%
+  step_interact(terms = ~ blueKills:blueAssists:blueTotalGold:redAvgLevel:blueAvgLevel + blueDeaths:redAssists:redTotalGold:blueAvgLevel:redAvgLevel + starts_with("blueHerald"):blueTowersDestroyed + starts_with("redHerald"):redTowersDestroyed) %>%
   step_center(all_predictors()) %>%
-  step_scale(all_predictors())
-  
+  step_scale(all_predictors())  #Centering and scaling our predictors
+
+#Numeric variable interactions were based on high correlation values from our correlation plot above
+
+#Heralds and towers interactions were based on our summary statics for those above
+
 ```
 
 ### Logistic Regression
 
-Logistic Regression done below with tuning parameters evaluated over our folds.
+Logistic Regression done below with tuning parameters  evaluated over our folds. We will 
 
-```{r}
+```{r, eval = FALSE}
 log_model <- logistic_reg(mode = "classification", engine = "glmnet", penalty = tune(), mixture = tune())
 
 log_wkflow <- workflow() %>%
@@ -280,7 +297,8 @@ autoplot(log_results)
   
 ```
 
-```{r}
+```{r, eval = FALSE}
+#Saving our results so we don't have to run the model again
 save(log_results, file = "results/log_results.rda")
 ```
 
@@ -294,7 +312,8 @@ load(file = "results/log_results.rda")
 
 ### Random Forest model
 
-```{r rf}
+```{r rf, eval = FALSE}
+#TEMP EVAL=FALSE, FIX THIS LATER MAYBE
 rf_model <- rand_forest() %>%
   set_engine("ranger") %>% 
   set_mode("classification")
