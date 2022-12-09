@@ -8,7 +8,6 @@ output:
     toc_float: true
     df_print: paged
     code_folding: hide
-
 ---
 
 ```{r setup, include=FALSE}
@@ -21,16 +20,14 @@ The goal of this project is to generate a machine learning model that can predic
 
 ### What is League of Legends?
 
-League of Legends(LoL) is a MOBA(Mobile Online Battle Arena) game created by Riot Games where two teams of 5 champions each versus each other in a tower defense-esque map with 3 lanes. The game
-revolves heavily around strategic resource generation and control of those resources to make your team’s champions stronger and more capable of destroying the enemy team’s base. A team wins by destroying the other team's nexus(the core base structure) first.
+League of Legends(LoL) is a MOBA(Mobile Online Battle Arena) game created by Riot Games where two teams of 5 champions each versus each other in a tower defense-esque map with 3 lanes. The game revolves heavily around strategic resource generation and control of those resources to make your team's champions stronger and more capable of destroying the enemy team's base. A team wins by destroying the other team's nexus(the core base structure) first.
 
 ### Why this model might be useful
 
-In League of Legends, once your team gets stronger from early resource advantages, it becomes even easier for your team to fight for more resources. As such, early game advantages often snowball exponentially into an eventual victory for the leading team. This model will attempt to predict the eventual winner of a game given this early game data. Hopefully this will give other players insight as to when its statistically worth it to surrender after a bad early game and on what resources to prioritize in the early game. 
-
-
+In League of Legends, once your team gets stronger from early resource advantages, it becomes even easier for your team to fight for more resources. As such, early game advantages often snowball exponentially into an eventual victory for the leading team. This model will attempt to predict the eventual winner of a game given this early game data. Hopefully this will give other players insight as to when its statistically worth it to surrender after a bad early game and on what resources to prioritize in the early game.
 
 ### Loading Packages and Raw Data
+
 ```{r packages, warning = FALSE}
 library(dplyr) #Basic R functions
 library(tidymodels)  #Tidymodels and tidyverse for the core modeling framework
@@ -47,8 +44,7 @@ library(ranger)
 
 ```
 
-The data that we will be using for this project is a Kaggle dataset(https://www.kaggle.com/datasets/bobbyscience/league-of-legends-diamond-ranked-games-10-min) containing early game data from high elo(D1 - Masters) ranked games from the EUW server. The dataset encompasses approximately 10,000 games with variables tracking statistics from both teams snapshotted at the 10:00 minute mark. Descriptions of every variable are available in the codebook in this project repository. 
-
+The data that we will be using for this project is a Kaggle dataset(<https://www.kaggle.com/datasets/bobbyscience/league-of-legends-diamond-ranked-games-10-min>) containing early game data from high elo(D1 - Masters) ranked games from the EUW server. The dataset encompasses approximately 10,000 games with variables tracking statistics from both teams snapshotted at the 10:00 minute mark. Descriptions of every variable are available in the codebook in this project repository.
 
 ```{r read}
 #Reading in raw csv file
@@ -56,13 +52,11 @@ league <- read.csv("data/raw/high_diamond_ranked_10min.csv")
 
 ```
 
-
-
 ## Pre-Processing and EDA
 
 ### Converting some variables into categorical
 
-All of the variables in our raw dataset are numeric by default, but some of them make more sense to represent as factor variables. "blueWins" is an obvious one to change, but some others such as "blueDragons" ,which tracks how many dragons the Blue team has slain, makes more sense to treat as a factor variable because it is only possible to kill at most 1 dragon before 10:00 of game time. 
+All of the variables in our raw dataset are numeric by default, but some of them make more sense to represent as factor variables. "blueWins" is an obvious one to change, but some others such as "blueDragons" ,which tracks how many dragons the Blue team has slain, makes more sense to treat as a factor variable because it is only possible to kill at most 1 dragon before 10:00 of game time.
 
 ```{r}
 
@@ -80,12 +74,11 @@ league_clean$redHeralds <- as.factor(league_clean$redHeralds)
 
 ```
 
-
 ```{r missing}
 sum(is.na(league_clean))
 ```
 
-No missing data here because this was all sourced from Riot Games' official API which only records completed games. 
+No missing data here because this was all sourced from Riot Games' official API which only records completed games.
 
 ```{r response}
 #Summing up all the times the Blue Team wins over 9879 ranked games
@@ -94,18 +87,16 @@ summary(league_clean$blueWins)
 
 ```
 
-Since there is no missing data in this dataset, we can conclude that the sample winrate for blue team is 4930/9879 = 0.499. This is actually lower than blue side winrate for most competitive professional leagues because blue side has easier access to neutral objectives(dragons, heralds, and Baron Nashor), first champion pick priority, and a slightly better camera angle. Having our sample winrate be almost exactly 50% makes it easier for our metrics to properly evaluate the performance of our model.   
-
+Since there is no missing data in this dataset, we can conclude that the sample winrate for blue team is 4930/9879 = 0.499. This is actually lower than blue side winrate for most competitive professional leagues because blue side has easier access to neutral objectives(dragons, heralds, and Baron Nashor), first champion pick priority, and a slightly better camera angle. Having our sample winrate be almost exactly 50% makes it easier for our metrics to properly evaluate the performance of our model.
 
 ### Cleaning Data
 
-On first glance, we can see that some variables in this dataset are actually redundant because they convey information from both teams implicitly. For example, blueGoldDiff and redGoldDiff both represent the difference in gold at 10 min., but just opposite signs because gold difference is a zero sum statistic. The code chunk below gets rid of redundant variables by either combining them into one variable or retaining only the blue side version. We will also eliminate variables that have 100% correlation with another variable as those variables will not provide any extra information for our model. 
-
+On first glance, we can see that some variables in this dataset are actually redundant because they convey information from both teams implicitly. For example, blueGoldDiff and redGoldDiff both represent the difference in gold at 10 min., but just opposite signs because gold difference is a zero sum statistic. The code chunk below gets rid of redundant variables by either combining them into one variable or retaining only the blue side version. We will also eliminate variables that have 100% correlation with another variable as those variables will not provide any extra information for our model.
 
 ```{r redundant}
 
 league_clean <- league_clean %>%
-  select(-c(redFirstBlood, redExperienceDiff, redGoldDiff)) #Redundant difference variables
+  select(-c(redFirstBlood, redExperienceDiff, blueExperienceDiff, redGoldDiff, blueGoldDiff)) #Redundant difference variables
 
 league_clean <- league_clean %>%
   select(-c(blueEliteMonsters, redEliteMonsters))
@@ -147,18 +138,13 @@ league_clean %>%
 
 Most of our numeric variables have reasonable and intuitive correlations. For example, blueKills is obviously correlated with blueAssists, but it is even more correlated with blueTotalGold. Kills are worth 300 gold by default, with first blood being worth 400 gold. Securing kills is actually one of the fastest ways to snowball as a champion kill by itself is worth about 15 minion kills. Killing a lane opponent also lets you farm minions without being pressured, gives you an opportunity to obtain even more gold from turret plates, and denies experience to your opponents since they aren't around to soak up minion experience.
 
-The ward and tower related variables have suprisingly low correlation with any other numeric variables. Wards are items you can place in-game that provide vision over a certain area for a fixed amount of time. Normally the game hides most of the map in a fog of war, such that you can only see the immediate area around your champion and your allies. Wards grant your team a limited amount of vision elsewhere which helps to detect flanks or lurking enemies. However just because a ward is placed does not mean that that ward is actually useful. Perhaps it is in an irrelevant spot that no one on the map will frequent. Wards also do not automatically alert you to enemies that they spot, you still have to manually check your mini-map. 
-
-
+The ward and tower related variables have suprisingly low correlation with any other numeric variables. Wards are items you can place in-game that provide vision over a certain area for a fixed amount of time. Normally the game hides most of the map in a fog of war, such that you can only see the immediate area around your champion and your allies. Wards grant your team a limited amount of vision elsewhere which helps to detect flanks or lurking enemies. However just because a ward is placed does not mean that that ward is actually useful. Perhaps it is in an irrelevant spot that no one on the map will frequent. Wards also do not automatically alert you to enemies that they spot, you still have to manually check your mini-map.
 
 ![Ward giving vision of a bush over the wall](images/wardOverWall.jpg)
 
-
-
-From past experience, I know that is actually rare for a tower to fall by 10:00. There are 3 towers per lane, referred to as T1, T2, and T3 towers respectively. T1 towers are the outermost towers and thus, the first to fall because for each lane, you have to destroy the preceding tower before sieging the next. Destroying towers, especially in the early game where you can get the full gold value of the tower plates, also grants a significant amount of gold which is why it seems very odd that there's only a minor correlation to a team's gold and gold differential. One hypothesis that I have is that destroying a tower so early in the game actually makes it easier for the team that lost the tower to safely farm back the deficit. Once a lane has lost their T1 tower, the minions in that lane will naturally push further towards the enemy base and forcing your team's champions to have to overextend to farm the minions in that lane. In this case, destroying an enemy tower gives your team an immediate economic reward, but puts your team at a positional disadvantage.                                                                                                      
+From past experience, I know that is actually rare for a tower to fall by 10:00. There are 3 towers per lane, referred to as T1, T2, and T3 towers respectively. T1 towers are the outermost towers and thus, the first to fall because for each lane, you have to destroy the preceding tower before sieging the next. Destroying towers, especially in the early game where you can get the full gold value of the tower plates, also grants a significant amount of gold which is why it seems very odd that there's only a minor correlation to a team's gold and gold differential. One hypothesis that I have is that destroying a tower so early in the game actually makes it easier for the team that lost the tower to safely farm back the deficit. Once a lane has lost their T1 tower, the minions in that lane will naturally push further towards the enemy base and forcing your team's champions to have to overextend to farm the minions in that lane. In this case, destroying an enemy tower gives your team an immediate economic reward, but puts your team at a positional disadvantage.
 
 ### Warding Correlation with Victory
-
 
 To determine if warding in the early game is actually correlated at all with winning, we can model a simplified logistic regression recipe and gauge the accuracy of that model.
 
@@ -208,6 +194,13 @@ ggplot(league_clean, aes(redWardsDestroyed)) +
 
 summary(league_clean$blueWardsPlaced)
 summary(league_clean$redWardsPlaced)
+
+ggplot(league_clean, aes(x=blueHeralds, y=blueTowersDestroyed)) +  geom_bar(fill='blue')
+
+x <- league_clean %>%
+  group_by(league_clean$blueHeralds) %>%
+  summary(league_clean$blueTowersDestroyed)
+
 ```
 
 From the boxplots and summaries above, we can see that the mean of wards placed for both teams by 10:00 is about 22 wards, but there are a ton of outlier values. Some games have teams place over 200 wards! That's more than 20 wards/min which far exceeds any reasonable pace for wards. In League of Legends, there are two types of wards: free, temporary wards that go on cooldown for about 120 seconds every time you place them and control wards which are permanent wards that cost 75 gold to buy. You can always place a control ward as long as you have one bought in your inventory, but you can only have 1 control ward per champion on the map at the same time. Since the frequency of free wards are gated by cooldown, the only way to achieve these extreme outlier values mentioned above is to buy an absurd amount of control wards. Way more than any normal gameplay would require and likely an excessive drain on gold, which may help to explain why ward placement doesn't seem to correlate well with winning. More strategic ward placement may still correlate with winning but the variables in this data set only give the raw quantity of wards and do not distinguish between the quality of the wards. As such, we will be dropping the ward variables from our model as well.
@@ -217,15 +210,10 @@ league_clean <- league_clean %>%
   select(-c(redWardsPlaced, redWardsDestroyed, blueWardsPlaced, blueWardsDestroyed))
 ```
 
-
-
-
 ```{r, eval=FALSE}
 #Saving our cleaned dataset to data/processed
 write.csv(league_clean, "data/processed/league_clean.csv")
 ```
-
-
 
 ## Data Splitting and Cross-validation
 
@@ -257,17 +245,14 @@ league_folds <- vfold_cv(league_train, v=5,strata = blueWins, repeats = 5) #5 fo
 
 Now we're ready to start building our full models to try to predict whether Blue team or Red Team wins.
 
-
 ### Building the Recipe
 
-
 We'll start by setting up an initial recipe and workflow below. We'll use every predictor left in our cleaned dataset as predictors with the exception of **gameID** and **blueWins**. Interactions terms are also included.
-
 
 ```{r recipe}
 #Overriding previous recipe from simple model
 
-league_recipe <- recipe(blueWins ~ blueFirstBlood + blueKills + blueDeaths + blueAssists + blueDragons + blueHeralds + blueTowersDestroyed + blueTotalGold + blueAvgLevel  + blueExperienceDiff + redAssists + redDragons + redHeralds + redTowersDestroyed + redTotalGold + redAvgLevel, data = league_train) %>%
+league_recipe <- recipe(blueWins ~ blueFirstBlood + blueKills + blueDeaths + blueAssists + blueDragons + blueHeralds + blueTowersDestroyed + blueTotalGold + blueAvgLevel + redAssists + redDragons + redHeralds + redTowersDestroyed + redTotalGold + redAvgLevel, data = league_train) %>%
   step_dummy(all_nominal_predictors()) %>% 
   step_interact(terms = ~ blueKills:blueAssists + blueDeaths:redAssists) %>%
   step_center(all_predictors()) %>%
@@ -275,10 +260,9 @@ league_recipe <- recipe(blueWins ~ blueFirstBlood + blueKills + blueDeaths + blu
   
 ```
 
+### Logistic Regression
 
-### Logistic Regression 
-
-Logistic Regression done below with tuning parameters evaluated over our folds. 
+Logistic Regression done below with tuning parameters evaluated over our folds.
 
 ```{r}
 log_model <- logistic_reg(mode = "classification", engine = "glmnet", penalty = tune(), mixture = tune())
@@ -287,13 +271,12 @@ log_wkflow <- workflow() %>%
   add_recipe(league_recipe) %>%
   add_model(log_model)
 
-log_grid <- grid_regular(penalty(range = c(-5,5)), mixture(range = c(0,1)), levels = 5)
+log_grid <- grid_regular(penalty(range = c(-5,5)), mixture(range = c(0,1)), levels = 10)
 
 log_results <- tune_grid(log_wkflow, resamples = league_folds, grid =  log_grid)
 
 autoplot(log_results)
 
-log_results
   
 ```
 
@@ -305,7 +288,11 @@ save(log_results, file = "results/log_results.rda")
 load(file = "results/log_results.rda")
 ```
 
-### Random Forest model 
+### Decision Tree
+
+
+
+### Random Forest model
 
 ```{r rf}
 rf_model <- rand_forest() %>%
@@ -324,5 +311,3 @@ tune_res_rf <- tune_grid(
   metrics = metric_set(accuracy, roc_auc)
 )
 ```
-
-
