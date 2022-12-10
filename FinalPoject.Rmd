@@ -1,5 +1,5 @@
 ---
-title: "Predicting the Winner of a League of Legends game"
+title: "Predicting the Winner of League of Legends"
 author: "William Long"
 date: "Fall 2022"
 output:
@@ -264,7 +264,7 @@ Now we're ready to start building our full models to try to predict whether Blue
 
 ### Building the Recipe
 
-We'll start by setting up an initial recipe and workflow below. We'll use every predictor left in our cleaned dataset as predictors with the exception of **gameID** and **blueWins**. Interactions terms are also included with reasoning supported from our EDA. 
+We'll start by setting up an initial recipe and workflow below. We'll use every variable left in our cleaned dataset as predictors with the exception of **gameID** and **blueWins**. Interactions terms are also included with reasoning supported from our EDA. 
 
 ```{r recipe}
 #Overriding previous recipe from simple model
@@ -313,16 +313,20 @@ autoplot(log_results)
 
 ### Decision Tree
 
+We will also fit decision tree model with tuning parameters of `cost_complexity`, `tree_depth`, and `min_n`. 
+
 ```{r, eval = FALSE}
 class_tree_model <- decision_tree() %>%
   set_engine("rpart") %>%
-  set_mode("classification")
+  set_mode("classification") %>%
+  set_args(cost_complexity = tune()) %>%
+  set_args(tree_depth = tune())
   
 class_tree_wf <- workflow() %>%
-  add_model(class_tree_model %>% set_args(cost_complexity = tune())) %>%
+  add_model(class_tree_model) %>%
   add_recipe(league_recipe)
 
-class_tree_grid <- grid_regular(cost_complexity(range = c(-3, -1)), levels = 10)
+class_tree_grid <- grid_regular(cost_complexity(range = c(-3, -1)), tree_depth(), levels = 5)
 
 class_tree_res <- tune_grid(
   class_tree_wf, 
@@ -379,9 +383,28 @@ autoplot(rf_res)
 
 ### Boosted Tree
 
+Our last model to evaluate will be a boosted tree with tuning parameters of `trees`, `mtry`, and `learn_rate`. 
+
 ```{r, eval = FALSE}
 boost_model <- boost_tree() %>%
-  
+  set_engine("xgboost") %>%
+  set_mode("classification") %>%
+  set_args(trees = tune()) %>%
+  set_args(mtry = tune()) %>%
+  set_args(learn_rate = tune())
+
+boost_wf <- workflow() %>%
+  add_model(boost_model) %>%
+  add_recipe(league_recipe)
+
+boost_grid <- grid_regular(trees(range(c(10, 2000))), mtry(range(c(1, 14))), learn_rate(range(c(0.1, 0.3))))
+
+boost_tree_res <- tune_grid(
+  boost_wf, 
+  resamples = league_folds, 
+  grid = boost_grid, 
+  metrics = metric_set(roc_auc, accuracy)
+)
 ```
 
 
