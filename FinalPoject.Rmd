@@ -22,13 +22,15 @@ The goal of this project is to generate a machine learning model that can predic
 
 League of Legends(LoL) is a MOBA(Mobile Online Battle Arena) game created by Riot Games where two teams of 5 champions each versus each other in a tower defense-esque map with 3 lanes. The game revolves heavily around strategic resource generation and control of those resources to make your team's champions stronger and more capable of destroying the enemy team's base. A team wins by destroying the other team's nexus(the core base structure) first.
 
+![Map of Summoner's Rift with labels](images/leagueMap.png)
+
 ### Why this model might be useful
 
 In League of Legends, once your team gets stronger from early resource advantages, it becomes even easier for your team to fight for more resources. As such, early game advantages often snowball exponentially into an eventual victory for the leading team. This model will attempt to predict the eventual winner of a game given this early game data. Hopefully this will give other players insight as to when its statistically worth it to surrender after a bad early game and on what resources to prioritize in the early game.
 
 ### Loading Packages and Raw Data
 
-```{r packages, warning = FALSE, echo = FALSE}
+```{r packages, warning = FALSE, echo = FALSE, results = "hide"}
 library(dplyr) #Basic R functions
 library(tidymodels)  #Tidymodels and tidyverse for the core modeling framework
 library(tidyverse)
@@ -151,6 +153,8 @@ From past experience, I know that is actually rare for a tower to fall by 10:00.
 
 
 I also want to see if there's any correlation between towers destroyed and heralds slain by each team. A rift herald is a neutral objective in League of Legends that can be slain by either team. Once slain, the team that killed the herald can re-summon it again to cause it ram into an enemy tower, dealing a large amount of damage to the tower. This makes it much easier for a team with a herald to siege towers and I hypothesize that teams that have slain a rift herald before 10 min will have destroyed more towers on average. Below are summary statistics for `blueTowersDestroyed` and `redTowersDestroyed` grouped by `blueHeralds` and `redHeralds` respectively. 
+
+![Rift herald hitting tower](images/riftHeraldBonk.webp)
 
 ```{r}
 tapply(league_clean$blueTowersDestroyed, league_clean$blueHeralds, summary)
