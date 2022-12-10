@@ -326,7 +326,7 @@ class_tree_res <- tune_grid(
   grid = class_tree_grid, 
   metrics = metric_set(roc_auc, accuracy)
 )
-autoplot(class_tree_res)
+
 ```
 Accuracy peaks around the same value as logistic regression, but `roc_auc` has slightly decreased.
 
@@ -334,11 +334,16 @@ Accuracy peaks around the same value as logistic regression, but `roc_auc` has s
 save(class_tree_res, file = "results/class_tree_results.rda")
 ```
 
+```{r}
+load(file = "results/class_tree_results.rda")
+autoplot(class_tree_res)
+```
+
 
 ### Random Forest model
 
+Here we will also fit a random forest model with tuning parameters of `mtry`, `trees`, and `min_n`. `mtry` is the number of predictors randomly sampled per split and I have the max value set to just slightly below our total sum of predictors.`min_n` is  the mininum number of observations needed for our model to create another split and this parameter is set to a range of 50-500. `trees` is set to a range of 64-128 which is a good compromise between training performance and processing power. Even so, this model still took approximately 6 hours to fit. 
 ```{r rf, eval = FALSE}
-#TEMP EVAL=FALSE, FIX THIS LATER MAYBE
 rf_model <- rand_forest() %>%
   set_engine("ranger") %>% 
   set_mode("classification")
@@ -347,11 +352,39 @@ rf_wf <- workflow() %>%
   add_model(rf_model %>% set_args(mtry = tune(), trees = tune(), min_n = tune())) %>%
   add_recipe(league_recipe)
 
-rf_param_grid <- grid_regular(mtry(range=c(1,15)), trees(range=c(64,128)), min_n(range = c(50, 500)), levels = 3)
-tune_res_rf <- tune_grid(
+rf_param_grid <- grid_regular(mtry(range=c(1,14)), trees(range=c(64,128)), min_n(range = c(50, 500)), levels = 5)
+rf_res <- tune_grid(
   rf_wf, 
   resamples = league_folds, 
   grid = rf_param_grid, 
   metrics = metric_set(accuracy, roc_auc)
 )
 ```
+
+```{r, eval = FALSE}
+#Definitely don't want to have to refit this model
+save(rf_res, file = "results/rf_res.rda")
+
+```
+
+```{r}
+load(file = "results/rf_res.rda")
+autoplot(rf_res)
+
+```
+
+### Boosted Tree
+
+```{r, eval = FALSE}
+boost_model <- boost_tree() %>%
+  
+```
+
+
+## Model Selection
+
+### Fitting onto Testing Data
+
+## Conclusion
+
+### Variable importance to winning 
