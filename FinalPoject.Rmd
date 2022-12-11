@@ -336,6 +336,7 @@ class_tree_res <- tune_grid(
 )
 
 ```
+
 Accuracy peaks around the same value as logistic regression, but `roc_auc` has slightly decreased.
 
 ```{r, eval = FALSE}
@@ -351,6 +352,7 @@ autoplot(class_tree_res)
 ### Random Forest model
 
 Here we will also fit a random forest model with tuning parameters of `mtry`, `trees`, and `min_n`. `mtry` is the number of predictors randomly sampled per split and I have the max value set to just slightly below our total sum of predictors.`min_n` is  the mininum number of observations needed for our model to create another split and this parameter is set to a range of 50-500. `trees` is set to a range of 64-128 which is a good compromise between training performance and processing power. Even so, this model still took approximately 6 hours to fit. 
+
 ```{r rf, eval = FALSE}
 rf_model <- rand_forest() %>%
   set_engine("ranger") %>% 
@@ -417,6 +419,7 @@ load(file = "results/boost_res.rda")
 autoplot(boost_tree_res)
 ```
 
+It looks like our boosted tree actually ended up performing the worst in both accuracy and `roc_auc` compared to our other models. 
 ## Model Selection
 
 ### Fitting onto Testing Data
