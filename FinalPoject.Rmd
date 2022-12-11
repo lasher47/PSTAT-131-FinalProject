@@ -76,8 +76,7 @@ league_clean$redHeralds <- as.factor(league_clean$redHeralds)
 
 ```
 
-We will also check for any missing data in our dataset. 
-
+We will also check for any missing data in our dataset.
 
 ```{r missing}
 sum(is.na(league_clean))
@@ -96,7 +95,7 @@ Since there is no missing data in this dataset, we can conclude that the sample 
 
 ### Cleaning Data
 
-On first glance, we can see that some variables in this dataset are actually not useful for a machine learning model because they are derived purely from information from other variables. For example, `blueGoldDiff` represents `blueTotalGold` - `redTotalGold`  at 10 min, but this variable doesn't provide our model with any extra information. In a similar vein, there are also redundant variables for Red team that represent information that is already conveyed by a similar Blue team variable. `redFirstBlood` is a binary variable that represents whether or not the Red team secured the first champion kill of the game, but `blueFirstBlood` represents the same information because only one team can get the first champion kill. The code chunk below drops excess variables that are already 100% correlated with other variables.
+On first glance, we can see that some variables in this dataset are actually not useful for a machine learning model because they are derived purely from information from other variables. For example, `blueGoldDiff` represents `blueTotalGold` - `redTotalGold` at 10 min, but this variable doesn't provide our model with any extra information. In a similar vein, there are also redundant variables for Red team that represent information that is already conveyed by a similar Blue team variable. `redFirstBlood` is a binary variable that represents whether or not the Red team secured the first champion kill of the game, but `blueFirstBlood` represents the same information because only one team can get the first champion kill. The code chunk below drops excess variables that are already 100% correlated with other variables.
 
 ```{r excess}
 
@@ -145,14 +144,11 @@ Most of our numeric variables have reasonable and intuitive correlations. For ex
 
 The ward and tower related variables have suprisingly low correlation with any other numeric variables. Wards are items you can place in-game that provide vision over a certain area for a fixed amount of time. Normally the game hides most of the map in a fog of war, such that you can only see the immediate area around your champion and your allies. Wards grant your team a limited amount of vision elsewhere which helps to detect flanks or lurking enemies. However just because a ward is placed does not mean that that ward is actually useful. Perhaps it is in an irrelevant spot that no one on the map will frequent. Wards also do not automatically alert you to enemies that they spot, you still have to manually check your mini-map.
 
-
-
 ![Ward giving vision of a bush over the wall](images/wardOverWall.jpg)
 
 From past experience, I know that is actually rare for a tower to fall by 10:00. There are 3 towers per lane, referred to as T1, T2, and T3 towers respectively. T1 towers are the outermost towers and thus, the first to fall because for each lane, you have to destroy the preceding tower before sieging the next. Destroying towers, especially in the early game where you can get the full gold value of the tower plates, also grants a significant amount of gold which is why it seems very odd that there's only a minor correlation to a team's gold and gold differential. One hypothesis that I have is that destroying a tower so early in the game actually makes it easier for the team that lost the tower to safely farm back the deficit. Once a lane has lost their T1 tower, the minions in that lane will naturally push further towards the enemy base and forcing your team's champions to have to overextend to farm the minions in that lane. In this case, destroying an enemy tower gives your team an immediate economic reward, but puts your team at a positional disadvantage.
 
-
-I also want to see if there's any correlation between towers destroyed and heralds slain by each team. A rift herald is a neutral objective in League of Legends that can be slain by either team. Once slain, the team that killed the herald can re-summon it again to cause it ram into an enemy tower, dealing a large amount of damage to the tower. This makes it much easier for a team with a herald to siege towers and I hypothesize that teams that have slain a rift herald before 10 min will have destroyed more towers on average. Below are summary statistics for `blueTowersDestroyed` and `redTowersDestroyed` grouped by `blueHeralds` and `redHeralds` respectively. 
+I also want to see if there's any correlation between towers destroyed and heralds slain by each team. A rift herald is a neutral objective in League of Legends that can be slain by either team. Once slain, the team that killed the herald can re-summon it again to cause it ram into an enemy tower, dealing a large amount of damage to the tower. This makes it much easier for a team with a herald to siege towers and I hypothesize that teams that have slain a rift herald before 10 min will have destroyed more towers on average. Below are summary statistics for `blueTowersDestroyed` and `redTowersDestroyed` grouped by `blueHeralds` and `redHeralds` respectively.
 
 ![Rift herald hitting tower](images/riftHeraldBonk.webp)
 
@@ -264,7 +260,7 @@ Now we're ready to start building our full models to try to predict whether Blue
 
 ### Building the Recipe
 
-We'll start by setting up an initial recipe and workflow below. We'll use every variable left in our cleaned dataset as predictors with the exception of **gameID** and **blueWins**. Interactions terms are also included with reasoning supported from our EDA. 
+We'll start by setting up an initial recipe and workflow below. We'll use every variable left in our cleaned dataset as predictors with the exception of **gameID** and **blueWins**. Interactions terms are also included with reasoning supported from our EDA.
 
 ```{r recipe}
 #Overriding previous recipe from simple model
@@ -297,7 +293,7 @@ log_grid <- grid_regular(penalty(range = c(-5,5)), mixture(range = c(0,1)), leve
 log_results <- tune_grid(log_wkflow, resamples = league_folds, grid =  log_grid)
   
 ```
-Our accuracy for this type of model seems to peak around 70% and our `roc_auc` seems to peak around 0.8
+
 
 ```{r, eval = FALSE}
 #Saving our results so we don't have to run the model again
@@ -309,11 +305,18 @@ load(file = "results/log_results.rda")
 autoplot(log_results)
 ```
 
+Because our outcome variable in this dataset has almost an exact even 50/50 distribution, I will be using accuracy as the metric of choice to select the best model. The code chunk below uses the `show_best` function to pick the best version of our logistic regression model over our folds and repeats.
 
+```{r}
+show_best(log_results, metric = "accuracy") %>%
+  select(-.estimator, -.config)
+```
+
+Our accuracy for this type of model peaks around 0.729. 
 
 ### Decision Tree
 
-We will also fit decision tree model with tuning parameters of `cost_complexity`, `tree_depth`, and `min_n`. 
+We will also fit decision tree model with tuning parameters of `cost_complexity`, `tree_depth`, and `min_n`.
 
 ```{r, eval = FALSE}
 class_tree_model <- decision_tree() %>%
@@ -337,7 +340,6 @@ class_tree_res <- tune_grid(
 
 ```
 
-Accuracy peaks around the same value as logistic regression, but `roc_auc` has slightly decreased.
 
 ```{r, eval = FALSE}
 save(class_tree_res, file = "results/class_tree_results.rda")
@@ -348,10 +350,16 @@ load(file = "results/class_tree_results.rda")
 autoplot(class_tree_res)
 ```
 
+```{r}
+show_best(class_tree_res, metric = "accuracy") %>%
+  select(-.estimator, -.config)
+```
+
+Our peak accuracy for the decision tree model is about 0.713, which is actually slightly lower than our logistic regression model.
 
 ### Random Forest model
 
-Here we will also fit a random forest model with tuning parameters of `mtry`, `trees`, and `min_n`. `mtry` is the number of predictors randomly sampled per split and I have the max value set to just slightly below our total sum of predictors.`min_n` is  the mininum number of observations needed for our model to create another split and this parameter is set to a range of 50-500. `trees` is set to a range of 64-128 which is a good compromise between training performance and processing power. Even so, this model still took approximately 6 hours to fit. 
+Here we will also fit a random forest model with tuning parameters of `mtry`, `trees`, and `min_n`. `mtry` is the number of predictors randomly sampled per split and I have the max value set to just slightly below our total sum of predictors.`min_n` is the mininum number of observations needed for our model to create another split and this parameter is set to a range of 50-500. `trees` is set to a range of 64-128 which is a good compromise between training performance and processing power. Even so, this model still took approximately 6 hours to fit.
 
 ```{r rf, eval = FALSE}
 rf_model <- rand_forest() %>%
@@ -382,10 +390,16 @@ load(file = "results/rf_res.rda")
 autoplot(rf_res)
 
 ```
+```{r}
+show_best(rf_res, metric = "accuracy") %>%
+  select(-.estimator, -.config)
+```
+
+Once again, this model's accuracy does not surpass our logistic regression model, but the random forest did still outperform our decision tree. 
 
 ### Boosted Tree
 
-Our last model to evaluate will be a boosted tree with tuning parameters of `trees`, `mtry`, and `learn_rate`. 
+Our last model to evaluate will be a boosted tree with tuning parameters of `trees`, `mtry`, and `learn_rate`.
 
 ```{r, eval = FALSE}
 boost_model <- boost_tree() %>%
@@ -408,22 +422,57 @@ boost_tree_res <- tune_grid(
   metrics = metric_set(roc_auc, accuracy)
 )
 ```
+
 ```{r, eval = FALSE}
 #Saving results of model 
 save(boost_tree_res, file = "results/boost_res.rda")
 ```
-
 
 ```{r}
 load(file = "results/boost_res.rda")
 autoplot(boost_tree_res)
 ```
 
-It looks like our boosted tree actually ended up performing the worst in both accuracy and `roc_auc` compared to our other models. 
-## Model Selection
+```{r}
+show_best(boost_tree_res, metric = "accuracy") %>%
+  select(-.estimator, -.config)
+```
 
-### Fitting onto Testing Data
+It looks like our boosted tree model actually performed the worst, with its peak accuracy not even surpassing 0.7.
+
+### Fitting Best Model
+
+From the 4 models that we fit onto our cross validation folds, logistic regression ended up performing the best. Our code chunk below will now fit that best model with its parameters onto our entire training set.
+
+```{r, eval = FALSE}
+save(log_wkflow, file = "results/log_wkflow.rda")
+```
+
+
+```{r, warning = FALSE}
+load(file = "results/log_wkflow.rda")
+log_reg_tuned <- log_wkflow %>%
+  finalize_workflow(select_best(log_results, metric = "accuracy"))
+
+log_final_model <- fit(log_reg_tuned, league_train)
+
+```
+
+
+### Final Metrics
+
+Now that we've fit our best model onto our entire training set so it can learn from all of the information in that dataset, we can now test its performance on the testing data. 
+
+```{r}
+test_res <- predict(log_final_model, new_data = league_test %>% select(-blueWins))
+test_res <- bind_cols(test_res, league_test %>% select(blueWins))
+
+accuracy(test_res, truth = blueWins, estimate = .pred_class)
+
+
+```
+Our testing accuracy is about 0.722 which is about the same value that we obtained from the training data.
 
 ## Conclusion
 
-### Variable importance to winning 
+### Variable importance to winning
