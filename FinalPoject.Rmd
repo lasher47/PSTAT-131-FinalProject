@@ -30,7 +30,7 @@ In League of Legends, once your team gets stronger from early resource advantage
 
 ### Loading Packages and Raw Data
 
-```{r packages, warning = FALSE, echo = FALSE, results = "hide"}
+```{r packages, warning = FALSE, results = "hide"}
 library(dplyr) #Basic R functions
 library(tidymodels)  #Tidymodels and tidyverse for the core modeling framework
 library(tidyverse)
@@ -283,7 +283,7 @@ league_recipe <- recipe(blueWins ~ blueFirstBlood + blueKills + blueDeaths + blu
 
 ### Logistic Regression
 
-Logistic Regression done below with tuning parameters  evaluated over our folds.
+Logistic Regression done below with tuning parameters of `penalty` and `mixture` evaluated over our folds.
 
 ```{r, eval = FALSE}
 log_model <- logistic_reg(mode = "classification", engine = "glmnet", penalty = tune(), mixture = tune())
