@@ -479,7 +479,7 @@ accuracy(test_res, truth = blueWins, estimate = .pred_class)
 
 
 ```
-Our testing accuracy is about 0.738 which is about the same value that we obtained from the training data.
+Our testing accuracy is about 0.72 which is about the same value that we obtained from the training data.
 
 ## Variable Importance and Using our Model
 
@@ -493,20 +493,72 @@ From our variable importance barplot above we can see that gold is the most impo
 
 ### Model Predictions
 
-Now we can use this model to make some predictions on some in-game data that I've sourced from profession games
+Now we can use this model to make some predictions on some in-game data that I've sourced from professional games.
 
-```{r, eval = FALSE}
-sktDRX <- data.frame(
-  blueTotalGold <- 
-  redTotalGold <-
+Our first example is predicting the winner of T1(blue Team) vs JDG(red Team) in Game 2 of the 2022 Worlds Championship Semi-Finals
+
+```{r}
+sktJDG <- data.frame(
+  blueTotalGold = 15,100,
+  redTotalGold = 15,500,
+  blueKills = 1,
+  blueDeaths = 2, 
+  blueTowersDestroyed = 0,
+  redTowersDestroyed = 0, 
+  blueHeralds = "1",
+  redHeralds = "0",
+  redDragons = "1",
+  blueDragons = "0",
+  blueAssists = 1, 
+  redAssists = 2,
+  blueAvgLevel = 7.4,
+  redAvgLevel = 7.1,
+  blueFirstBlood = "0"
   
 )
+
+predict(log_final_model, sktJDG, type = "class")
 ```
 
+T1 did end up actually winning this game even though, JDG was predicted to win by the model. From the stats above, we can see that the game was very close to even at 10 minutes, so predicting this type of game was likely to be difficult.
 
+Our next example is JDG(blue Team) vs RGE(red Team) in game 1 of the 2022 Worlds Championship Quarterfinals. 
+
+```{r}
+jdgRGE <- data.frame(
+  blueTotalGold = 16,200,
+  redTotalGold = 15,700,
+  blueKills = 2,
+  blueDeaths = 1, 
+  blueTowersDestroyed = 0,
+  redTowersDestroyed = 0, 
+  blueHeralds = "1",
+  redHeralds = "0",
+  redDragons = "1",
+  blueDragons = "0",
+  blueAssists = 1, 
+  redAssists = 2,
+  blueAvgLevel = 7.2,
+  redAvgLevel = 7.0,
+  blueFirstBlood = "0"
+  
+)
+
+predict(log_final_model, jdgRGE, type = "class")
+```
+
+Our model failed to predict the correct result for this game as well, possibily indicating a weakness of the model for predicting winners in other contexts. Professional games are much more coordinated than even high-elo public ranked games, and most professional teams are evenly matched enough where one team isn't clearly blowing out the other by 10 minutes. 
 
 
 
 ## Conclusion
 
-From our analysis above, our model has a reasonable chance of predicting the winner from the earlygame, but not quite high enough to make surefire predictions. The average game length for most League of Legends games is typically under 30 minutes. 10 minutes of the earlygame is only about a third of the game, which still leaves plenty of time for the losing team to come back. 
+From our analysis above, our model has a reasonable chance of predicting the winner from the earlygame in high-elo ranked soloqueue games, but not quite high enough to make surefire predictions or in other contexts. The average game length for most League of Legends games is typically under 30 minutes. 10 minutes of the earlygame is only about a third of the game, which still leaves plenty of time for the losing team to come back. 
+
+We started with a fairly large dataset of high-elo games from the EUW(European West) server. I preferred a sample of high-elo games rather than a normal distribution because high-elo players tend to be better at pushing their advanteges than lesser skilled players. The EUW server is also known for being a fairly high-quality server in terms of gameplay. Ideally I would've have liked to use games from a South Korean or Chinese server as they have some of the best players in the world, but Riot Games API allows much more unrestricted access to NA and EU servers Comebacks and throws are way more common amongst players that are less skilled at the fundamentals. 
+
+The dataset initially had a large number of predictors that either correlated heavily amongst each other or that lacked predictive power for our outcome variable. We processed that into a cleaned dataset with the mininum variables we needed. After building our recipe, we split the training and testing data, and also split our training data into folds for cross-validation. We then evaluated a multitude of models on our training data before eventually selecting logistic regression as our top-performing model of choice. After evaluating on the testing set, we are able to give only a reasonably adequate prediction based on earlygame information.
+
+TOur main constraints for improving the accuracy of this model is limited by the amount of data in this dataset. It only has information on economic and strategic resources, but does not contain information on team champion compositions, which is one of the most important factors in League of Legends. Champions in League of Legends are typically divided into earlygame champions and lategame champions. The earlygame champions tend to start off strong even from the early levels and are also not dependent on items to fully enable their strengths. Their downside is that their strength typically falls off later in the game due to their poor scaling. Lategame champions are the opposite in that tend to rely on both levels and items to augment them, but become huge threats as the game goes longer. A team with more earlygame champions is naturally more likely to have an advantage at 10 minutes, but it doesn't necessarily mean they have enough of an advantage to win the game fast enough before an enemy team of mostly lategame champions. 
+
+Fortunately, I also think this is a good thing for the quality of the game as a whole though. If games were decided by 10 minutes, it would never be worth it to play a team composition of late-game scaling champions or to go for miraculous comebacks.
