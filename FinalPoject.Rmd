@@ -4,10 +4,12 @@ author: "William Long"
 date: "Fall 2022"
 output:
   html_document:
-    toc: true
-    toc_float: true
+    toc: yes
+    toc_float: yes
     df_print: paged
     code_folding: hide
+  pdf_document:
+    toc: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -76,7 +78,7 @@ league_clean$redHeralds <- as.factor(league_clean$redHeralds)
 
 ```
 
-We will also check for any missing data in our dataset.
+We will also check for any missing data in our dataset by using `sum()` to sum up all the values from `is.na()` on our processed dataset. 
 
 ```{r missing}
 sum(is.na(league_clean))
@@ -86,7 +88,7 @@ As expected, there is no missing data here because this was all sourced from Rio
 
 ```{r response}
 #Summing up all the times the Blue Team wins over 9879 ranked games
-plot(league_clean$blueWins)
+plot(league_clean$blueWins, xlab = "0 = Blue team lost, 1 = Blue team won")
 summary(league_clean$blueWins)
 
 ```
@@ -130,7 +132,7 @@ league_clean <- league_clean %>%
 
 ### Correlations between variables
 
-```{r corr}
+```{r corr, warning = FALSE}
 #Testing correlations between numeric variables
 league_clean %>%
     select(is.numeric) %>% 
@@ -151,6 +153,7 @@ From past experience, I know that is actually rare for a tower to fall by 10:00.
 I also want to see if there's any correlation between towers destroyed and heralds slain by each team. A rift herald is a neutral objective in League of Legends that can be slain by either team. Once slain, the team that killed the herald can re-summon it again to cause it ram into an enemy tower, dealing a large amount of damage to the tower. This makes it much easier for a team with a herald to siege towers and I hypothesize that teams that have slain a rift herald before 10 min will have destroyed more towers on average. Below are summary statistics for `blueTowersDestroyed` and `redTowersDestroyed` grouped by `blueHeralds` and `redHeralds` respectively.
 
 ![Rift herald hitting tower](images/riftHeraldBonk.webp)
+
 
 ```{r}
 tapply(league_clean$blueTowersDestroyed, league_clean$blueHeralds, summary)
@@ -210,11 +213,15 @@ ggplot(league_clean, aes(blueWardsDestroyed)) +
 
 ggplot(league_clean, aes(redWardsDestroyed)) +  
   geom_boxplot(fill = "#fb0410")
+```
 
+Summary statistics for `blueWardsPlaced` and `redWardsPlaced` respectively. 
+
+```{r}
 summary(league_clean$blueWardsPlaced)
 summary(league_clean$redWardsPlaced)
-
 ```
+
 
 From the boxplots and summaries above, we can see that the mean of wards placed for both teams by 10:00 is about 22 wards, but there are a ton of outlier values. Some games have teams place over 200 wards! That's more than 20 wards/min which far exceeds any reasonable pace for wards. In League of Legends, there are two types of wards: free, temporary wards that go on cooldown for about 120 seconds every time you place them and control wards which are permanent wards that cost 75 gold to buy. You can always place a control ward as long as you have one bought in your inventory, but you can only have 1 control ward per champion on the map at the same time. Since the frequency of free wards are gated by cooldown, the only way to achieve these extreme outlier values mentioned above is to buy an absurd amount of control wards. Way more than any normal gameplay would require and likely an excessive drain on gold, which may help to explain why ward placement doesn't seem to correlate well with winning. More strategic ward placement may still correlate with winning but the variables in this data set only give the raw quantity of wards and do not distinguish between the quality of the wards. As such, we will be dropping the ward variables from our model as well.
 
@@ -281,12 +288,17 @@ league_recipe <- recipe(blueWins ~ blueFirstBlood + blueKills + blueDeaths + blu
 
 Logistic Regression done below with tuning parameters of `penalty` and `mixture` evaluated over our folds.
 
-```{r, eval = FALSE}
+```{r}
 log_model <- logistic_reg(mode = "classification", engine = "glmnet", penalty = tune(), mixture = tune())
 
 log_wkflow <- workflow() %>%
   add_recipe(league_recipe) %>%
   add_model(log_model)
+
+```
+
+
+```{r, eval = FALSE}
 
 log_grid <- grid_regular(penalty(range = c(-5,5)), mixture(range = c(0,1)), levels = 10)
 
@@ -312,7 +324,7 @@ show_best(log_results, metric = "accuracy") %>%
   select(-.estimator, -.config)
 ```
 
-Our accuracy for this type of model peaks around 0.729. 
+Our accuracy for this type of model peaks around 0.734. 
 
 ### Decision Tree
 
@@ -440,17 +452,13 @@ show_best(boost_tree_res, metric = "accuracy") %>%
 
 It looks like our boosted tree model actually performed the worst, with its peak accuracy not even surpassing 0.7.
 
+
 ### Fitting Best Model
 
 From the 4 models that we fit onto our cross validation folds, logistic regression ended up performing the best. Our code chunk below will now fit that best model with its parameters onto our entire training set.
 
-```{r, eval = FALSE}
-save(log_wkflow, file = "results/log_wkflow.rda")
-```
-
 
 ```{r, warning = FALSE}
-load(file = "results/log_wkflow.rda")
 log_reg_tuned <- log_wkflow %>%
   finalize_workflow(select_best(log_results, metric = "accuracy"))
 
@@ -471,8 +479,34 @@ accuracy(test_res, truth = blueWins, estimate = .pred_class)
 
 
 ```
-Our testing accuracy is about 0.722 which is about the same value that we obtained from the training data.
+Our testing accuracy is about 0.738 which is about the same value that we obtained from the training data.
+
+## Variable Importance and Using our Model
+
+```{r}
+log_final_model %>%
+  extract_fit_engine() %>%
+  vip()
+```
+
+From our variable importance barplot above we can see that gold is the most important resource for winning. In League of Legends, players pay in-game gold to buy items for their champions. These items provide powerful combat statistics and often unique effects that change how a champion fights. The more gold you have, the more items you can buy and thus be much stronger than your opponent. In the early game, this is probably more important because your first item power spike is usually your strongest and reaching that before your opponent gives you a crucial window to push your advantage even further. Experience seems to be the second most important factor. Everytime a champion levels up they gain combat stats and an ability point which they can use to either upgrade or add a new a ability. 
+
+### Model Predictions
+
+Now we can use this model to make some predictions on some in-game data that I've sourced from profession games
+
+```{r, eval = FALSE}
+sktDRX <- data.frame(
+  blueTotalGold <- 
+  redTotalGold <-
+  
+)
+```
+
+
+
+
 
 ## Conclusion
 
-### Variable importance to winning
+From our analysis above, our model has a reasonable chance of predicting the winner from the earlygame, but not quite high enough to make surefire predictions. The average game length for most League of Legends games is typically under 30 minutes. 10 minutes of the earlygame is only about a third of the game, which still leaves plenty of time for the losing team to come back. 
