@@ -3,4 +3,6 @@ Final Project by William Long for PSTAT 131 with Professor Coburn in F22
 
 Codebook is in the data/raw folder along with the Kaggle dataset.
 
-results stores the results of our cross-validated models. 
+results stores the results of our cross-validated models.
+
+images folder were for some images in the actual markdown file and render.
